@@ -31,7 +31,7 @@ services:
       - ./media:/app/media
     environment:
       - DEBUG=True
-      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - ALLOWED_HOSTS=*
       - DB_NAME=requests_db
       - DB_USER=postgres
       - DB_PASSWORD=postgres

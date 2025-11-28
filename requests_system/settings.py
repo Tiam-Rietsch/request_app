@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +26,13 @@ SECRET_KEY = 'django-insecure-4f^cooypbd-*v!1ml$oostu)d+ffvd$q+9k5xw2_xayq0c01kk
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend', '0.0.0.0', '172.233.123.42']
+# Allow all hosts (IPv4 and IPv6) - can be restricted via environment variable
+# If ALLOWED_HOSTS env var is set and not '*', split by comma, otherwise allow all
+allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '*')
+if allowed_hosts_env == '*':
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',')]
 
 
 # Application definition
@@ -83,8 +90,6 @@ WSGI_APPLICATION = 'requests_system.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-import os
 
 DATABASES = {
     'default': {
