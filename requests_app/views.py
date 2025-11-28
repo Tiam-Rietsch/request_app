@@ -294,6 +294,7 @@ class RequestViewSet(viewsets.ModelViewSet):
 
         decision = serializer.validated_data['decision']
         reason = serializer.validated_data.get('reason', '')
+        new_score = request.data.get('new_score')  # Get new_score from request data
 
         with transaction.atomic():
             old_status = req.status
@@ -332,6 +333,12 @@ class RequestViewSet(viewsets.ModelViewSet):
 
             else:  # approved
                 req.status = 'approved'
+                # Update current_score if provided
+                if new_score is not None:
+                    try:
+                        req.current_score = float(new_score)
+                    except (ValueError, TypeError):
+                        pass
                 req.save()
 
                 # Log
@@ -341,7 +348,7 @@ class RequestViewSet(viewsets.ModelViewSet):
                     from_status=old_status,
                     to_status='approved',
                     actor=request.user,
-                    note="Requête approuvée pour traitement"
+                    note=f"Requête approuvée pour traitement" + (f" (Nouvelle note: {new_score})" if new_score else "")
                 )
 
                 # Notification à l'étudiant

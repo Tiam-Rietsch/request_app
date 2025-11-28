@@ -104,17 +104,34 @@ class IsRequestOwnerOrAssigned(BasePermission):
 class CanEditRequest(BasePermission):
     """
     Permission pour modifier une requête (seulement étudiant et si status='sent')
+    Ou staff assigné peut mettre à jour current_score
     """
     def has_object_permission(self, request, view, obj):
-        # Seul l'étudiant propriétaire peut modifier
-        if not hasattr(request.user, 'student_profile'):
-            return False
+        # Admin peut toujours modifier
+        if request.user.is_superuser:
+            return True
 
-        if obj.student.user != request.user:
-            return False
+        # Staff assigné peut mettre à jour current_score
+        if hasattr(request.user, 'lecturer_profile'):
+            # HOD peut modifier les requêtes de sa filière
+            lecturer = request.user.lecturer_profile
+            if lecturer.is_hod and lecturer.field == obj.field:
+                # Allow updating current_score only
+                if request.method == 'PATCH' and 'current_score' in request.data:
+                    return True
+            
+            # Staff assigné peut mettre à jour current_score
+            if obj.assigned_to == request.user:
+                # Allow updating current_score only
+                if request.method == 'PATCH' and 'current_score' in request.data:
+                    return True
 
-        # Seulement si status='sent'
-        return obj.can_edit()
+        # L'étudiant propriétaire peut modifier si status='sent'
+        if hasattr(request.user, 'student_profile'):
+            if obj.student.user == request.user:
+                return obj.can_edit()
+
+        return False
 
 
 class CanDeleteRequest(BasePermission):

@@ -107,6 +107,10 @@ class Lecturer(models.Model):
         related_name='lecturers',
         verbose_name="Filière (si HOD)"
     )
+    cellule_informatique = models.BooleanField(
+        default=False,
+        verbose_name="Membre de la cellule informatique"
+    )
 
     class Meta:
         verbose_name = "Enseignant"
@@ -220,6 +224,12 @@ class Request(models.Model):
     description = models.TextField(
         blank=True,
         verbose_name="Description"
+    )
+    current_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.00,
+        verbose_name="Note actuelle"
     )
     assigned_to = models.ForeignKey(
         User,

@@ -24,6 +24,14 @@ def get_user_role(user):
         return 'cellule'
     return 'user'
 
+def has_cellule_access(user):
+    """Check if user has access to IT cell (either via group or lecturer flag)"""
+    if user.groups.filter(name='cellule_informatique').exists():
+        return True
+    if hasattr(user, 'lecturer_profile'):
+        return user.lecturer_profile.cellule_informatique
+    return False
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])

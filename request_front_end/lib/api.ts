@@ -246,6 +246,7 @@ export const requestsAPI = {
     axis?: number;
     subject: number;
     type: 'cc' | 'exam';
+    current_score?: number;
     description: string;
   }) {
     return request<any>('/api/requests/', {
@@ -273,10 +274,13 @@ export const requestsAPI = {
     });
   },
 
-  async decision(id: string, decision: 'approved' | 'rejected', reason?: string) {
+  async decision(id: string, decision: 'approved' | 'rejected', reason?: string, new_score?: number) {
+    const data: any = { decision }
+    if (reason) data.reason = reason
+    if (new_score !== undefined) data.new_score = new_score
     return request<any>(`/api/requests/${id}/decision/`, {
       method: 'POST',
-      data: { decision, reason },
+      data,
     });
   },
 

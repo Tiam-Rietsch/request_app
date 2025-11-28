@@ -24,6 +24,7 @@ export default function CreateRequestPage() {
     axis: "",
     subject: "",
     type: "cc",
+    current_score: "0",
     description: "",
   })
 
@@ -142,6 +143,7 @@ export default function CreateRequestPage() {
         axis: formData.axis ? parseInt(formData.axis) : undefined,
         subject: parseInt(formData.subject),
         type: formData.type,
+        current_score: parseFloat(formData.current_score) || 0,
         description: formData.description,
       }
 
@@ -296,6 +298,24 @@ export default function CreateRequestPage() {
                   <span>EXAM (Examen)</span>
                 </label>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Note actuelle *</label>
+              <input
+                type="number"
+                name="current_score"
+                value={formData.current_score}
+                onChange={handleChange}
+                min="0"
+                max="20"
+                step="0.01"
+                placeholder="0.00"
+                className="w-full px-3 py-2 border border-border rounded-md"
+                required
+                disabled={loading}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Note actuelle sur 20</p>
             </div>
 
             <div>

@@ -17,6 +17,8 @@ export default function StaffDashboard() {
   const { user, loading: authLoading } = useAuth()
   const [requests, setRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [celluleRequests, setCelluleRequests] = useState<any[]>([])
+  const [celluleLoading, setCelluleLoading] = useState(true)
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -36,6 +38,25 @@ export default function StaffDashboard() {
       setLoading(false)
     }
   }
+
+  const hasCelluleAccess = user?.lecturer_profile?.cellule_informatique === true
+
+  const fetchCelluleRequests = async () => {
+    try {
+      const response = await requestsAPI.list({ status: 'in_cellule' })
+      const results = response.results || response
+      return Array.isArray(results) ? results : []
+    } catch (error) {
+      console.error("Failed to fetch cellule requests:", error)
+      return []
+    }
+  }
+
+  useEffect(() => {
+    if (!authLoading && user && hasCelluleAccess) {
+      fetchCelluleRequests().then(setCelluleRequests).finally(() => setCelluleLoading(false))
+    }
+  }, [authLoading, user, hasCelluleAccess])
 
   const stats = [
     { 
@@ -261,6 +282,81 @@ export default function StaffDashboard() {
             </div>
           )}
         </Card>
+
+        {/* IT Cell Section - Only if user has cellule_informatique access */}
+        {hasCelluleAccess && (
+          <Card className="p-6 mt-8 border-2 border-purple-200 dark:border-purple-800">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold">Cellule Informatique</h2>
+              <Link href="/staff/cellule-requests">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Eye className="h-4 w-4" />
+                  Voir toutes
+                </Button>
+              </Link>
+            </div>
+            
+            {celluleLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Chargement...</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
+                  <div className="p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">En traitement</p>
+                    <p className="text-2xl font-bold">{celluleRequests.filter(r => r.status === 'in_cellule').length}</p>
+                  </div>
+                  <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Retournées</p>
+                    <p className="text-2xl font-bold">{celluleRequests.filter(r => r.status === 'returned').length}</p>
+                  </div>
+                  <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Terminées</p>
+                    <p className="text-2xl font-bold">{celluleRequests.filter(r => r.status === 'done').length}</p>
+                  </div>
+                </div>
+
+                {celluleRequests.filter(r => r.status === 'in_cellule').length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Aucune requête en traitement dans la cellule</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="border-b border-border">
+                        <tr>
+                          <th className="text-left py-3 px-4 font-semibold">Étudiant</th>
+                          <th className="text-left py-3 px-4 font-semibold">Matière</th>
+                          <th className="text-left py-3 px-4 font-semibold">Date</th>
+                          <th className="text-right py-3 px-4 font-semibold">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {celluleRequests.filter(r => r.status === 'in_cellule').slice(0, 5).map((req) => (
+                          <tr key={req.id} className="border-b border-border hover:bg-secondary transition-colors">
+                            <td className="py-4 px-4">{req.student_name || 'N/A'}</td>
+                            <td className="py-4 px-4">{req.subject?.name || 'N/A'}</td>
+                            <td className="py-4 px-4 text-muted-foreground">
+                              {format(new Date(req.submitted_at), 'dd MMM yyyy', { locale: fr })}
+                            </td>
+                            <td className="py-4 px-4 text-right">
+                              <Link href={`/staff/cellule-requests/${req.id}`}>
+                                <Button variant="ghost" size="sm">
+                                  Voir
+                                </Button>
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
+        )}
       </div>
     </LayoutWrapper>
   )

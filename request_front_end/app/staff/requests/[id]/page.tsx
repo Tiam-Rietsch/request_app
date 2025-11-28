@@ -76,8 +76,13 @@ export default function StaffRequestDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [showApproveModal, setShowApproveModal] = useState(false)
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
   const [approveReason, setApproveReason] = useState("")
+  const [newScore, setNewScore] = useState("")
+  const [completeStatus, setCompleteStatus] = useState<"accepted" | "rejected">("accepted")
+  const [completeNewScore, setCompleteNewScore] = useState("")
+  const [completeReason, setCompleteReason] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -99,15 +104,16 @@ export default function StaffRequestDetailPage() {
   }
 
   const handleApprove = async () => {
-    if (!approveReason.trim()) {
-      toast.error("Veuillez fournir une raison pour l'approbation")
+    if (!newScore || parseFloat(newScore) < 0 || parseFloat(newScore) > 20) {
+      toast.error("Veuillez entrer une nouvelle note valide (0-20)")
       return
     }
 
     setSubmitting(true)
     try {
-      // First approve the request
-      await requestsAPI.decision(requestId, 'approved', approveReason)
+      // Approve the request with new_score included in decision
+      // The backend will handle updating current_score
+      await requestsAPI.decision(requestId, 'approved', approveReason || undefined, parseFloat(newScore))
       
       // Then send to IT cell
       await requestsAPI.sendToCellule(requestId)
@@ -115,6 +121,7 @@ export default function StaffRequestDetailPage() {
       toast.success("Requête approuvée et envoyée à la cellule informatique")
       setShowApproveModal(false)
       setApproveReason("")
+      setNewScore("")
       await fetchRequest()
     } catch (error: any) {
       toast.error(error.response?.data?.detail || "Erreur lors de l'approbation")
@@ -140,6 +147,33 @@ export default function StaffRequestDetailPage() {
       await fetchRequest()
     } catch (error: any) {
       toast.error(error.response?.data?.detail || "Erreur lors du rejet")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleComplete = async () => {
+    if (completeStatus === 'accepted' && !completeNewScore) {
+      toast.error("Veuillez entrer une nouvelle note pour une requête acceptée")
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await requestsAPI.complete(requestId, {
+        status: completeStatus,
+        new_score: completeNewScore ? parseFloat(completeNewScore) : undefined,
+        reason: completeReason || undefined
+      })
+      
+      toast.success("Requête fermée avec succès")
+      setShowCompleteModal(false)
+      setCompleteStatus("accepted")
+      setCompleteNewScore("")
+      setCompleteReason("")
+      await fetchRequest()
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || "Erreur lors de la fermeture")
     } finally {
       setSubmitting(false)
     }
@@ -275,12 +309,16 @@ export default function StaffRequestDetailPage() {
               </div>
 
               <div className="border-t border-border pt-6">
-                <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-3 gap-6 mb-6">
                   <div>
                     <p className="text-xs text-muted-foreground mb-2">Type de requête</p>
                     <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-xs font-medium">
                       {request.type_display}
                     </span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Note actuelle</p>
+                    <p className="text-sm font-semibold">{request.current_score || "0"}/20</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-2">Statut</p>
@@ -355,7 +393,15 @@ export default function StaffRequestDetailPage() {
               </Card>
             )}
 
-            {/* Action Buttons - Show when status is 'received' or 'sent' */}
+            {/* Action Buttons and Messages */}
+            {request.status === 'in_cellule' && (
+              <Card className="p-4 bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800">
+                <p className="text-sm text-purple-700 dark:text-purple-300 font-medium">
+                  ⏳ En attente de validation de la cellule informatique
+                </p>
+              </Card>
+            )}
+
             {['received', 'sent'].includes(request.status) && (
               <div className="grid md:grid-cols-2 gap-4">
                 <Button
@@ -374,6 +420,16 @@ export default function StaffRequestDetailPage() {
                   Rejeter la requête
                 </Button>
               </div>
+            )}
+
+            {request.status === 'returned' && (
+              <Button
+                className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+                onClick={() => setShowCompleteModal(true)}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Fermer la requête
+              </Button>
             )}
           </div>
 
@@ -413,6 +469,35 @@ export default function StaffRequestDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="old-score">Note actuelle</Label>
+                <input
+                  id="old-score"
+                  type="number"
+                  value={request?.current_score || "0"}
+                  readOnly
+                  className="w-full px-3 py-2 border border-border rounded-md bg-muted mt-2"
+                  disabled
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-score">Nouvelle note *</Label>
+                <input
+                  id="new-score"
+                  type="number"
+                  min="0"
+                  max="20"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={newScore}
+                  onChange={(e) => setNewScore(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md mt-2"
+                  required
+                />
+                <p className="text-xs text-muted-foreground mt-1">Sur 20</p>
+              </div>
+            </div>
             <div>
               <Label htmlFor="approve-reason">Commentaire (optionnel)</Label>
               <Textarea
@@ -431,6 +516,7 @@ export default function StaffRequestDetailPage() {
               onClick={() => {
                 setShowApproveModal(false)
                 setApproveReason("")
+                setNewScore("")
               }}
               disabled={submitting}
             >
@@ -492,6 +578,97 @@ export default function StaffRequestDetailPage() {
               variant="destructive"
             >
               {submitting ? "Traitement..." : "Confirmer le rejet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Complete Modal */}
+      <Dialog open={showCompleteModal} onOpenChange={setShowCompleteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Fermer la requête</DialogTitle>
+            <DialogDescription>
+              Finalisez la requête avec le résultat final. Cette action clôturera définitivement la requête.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="complete-status">Décision finale *</Label>
+              <div className="flex gap-4 mt-2">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="complete-status"
+                    value="accepted"
+                    checked={completeStatus === "accepted"}
+                    onChange={(e) => setCompleteStatus(e.target.value as "accepted" | "rejected")}
+                  />
+                  <span>Acceptée</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="complete-status"
+                    value="rejected"
+                    checked={completeStatus === "rejected"}
+                    onChange={(e) => setCompleteStatus(e.target.value as "accepted" | "rejected")}
+                  />
+                  <span>Rejetée</span>
+                </label>
+              </div>
+            </div>
+
+            {completeStatus === "accepted" && (
+              <div>
+                <Label htmlFor="complete-new-score">Nouvelle note *</Label>
+                <input
+                  id="complete-new-score"
+                  type="number"
+                  min="0"
+                  max="20"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={completeNewScore}
+                  onChange={(e) => setCompleteNewScore(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md mt-2"
+                  required
+                />
+                <p className="text-xs text-muted-foreground mt-1">Sur 20</p>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="complete-reason">Raison (optionnel)</Label>
+              <Textarea
+                id="complete-reason"
+                placeholder="Ajouter un commentaire..."
+                value={completeReason}
+                onChange={(e) => setCompleteReason(e.target.value)}
+                rows={4}
+                className="mt-2"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCompleteModal(false)
+                setCompleteStatus("accepted")
+                setCompleteNewScore("")
+                setCompleteReason("")
+              }}
+              disabled={submitting}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleComplete}
+              disabled={submitting || (completeStatus === "accepted" && !completeNewScore)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {submitting ? "Traitement..." : "Fermer la requête"}
             </Button>
           </DialogFooter>
         </DialogContent>

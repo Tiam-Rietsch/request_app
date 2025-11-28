@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Plus, FileText, LogOut, X, Home } from "lucide-react"
+import { LayoutDashboard, Plus, FileText, LogOut, X, Home, Server } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 
@@ -14,13 +14,17 @@ interface SidebarProps {
 
 export function Sidebar({ role = "public", isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
 
   const handleLogout = async () => {
     await logout()
   }
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/")
+
+  const hasCelluleAccess = () => {
+    return user?.lecturer_profile?.cellule_informatique === true
+  }
 
   const getMenuItems = () => {
     switch (role) {
@@ -31,10 +35,15 @@ export function Sidebar({ role = "public", isOpen = true, onClose }: SidebarProp
           { href: "/student/requests", label: "My Requests", icon: FileText },
         ]
       case "staff":
-        return [
+        const items = [
           { href: "/staff/dashboard", label: "Dashboard", icon: LayoutDashboard },
           { href: "/staff/requests", label: "Assigned Requests", icon: FileText },
         ]
+        // Add IT cell option if user has cellule_informatique access
+        if (hasCelluleAccess()) {
+          items.push({ href: "/staff/cellule-requests", label: "Cellule Informatique", icon: Server })
+        }
+        return items
       case "cellule":
         return [
           { href: "/cellule/dashboard", label: "Dashboard", icon: LayoutDashboard },

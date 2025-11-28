@@ -191,12 +191,16 @@ export default function StudentRequestDetailPage() {
           </div>
 
           <div className="border-t border-border pt-6">
-            <div className="grid grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-3 gap-6 mb-6">
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Type de requête</p>
                 <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-sm font-medium">
                   {request.type_display}
                 </span>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Note actuelle</p>
+                <p className="text-sm font-semibold">{request.current_score || "0"}/20</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Statut</p>

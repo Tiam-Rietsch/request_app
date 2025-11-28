@@ -66,7 +66,7 @@ class LecturerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lecturer
-        fields = ['id', 'user', 'subjects', 'is_hod', 'field']
+        fields = ['id', 'user', 'subjects', 'is_hod', 'field', 'cellule_informatique']
 
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -145,7 +145,7 @@ class RequestSerializer(serializers.ModelSerializer):
             'submitted_at', 'class_level', 'class_level_display',
             'field', 'field_display', 'axis', 'axis_display',
             'subject', 'subject_display', 'type', 'type_display',
-            'description', 'assigned_to', 'assigned_to_name',
+            'description', 'current_score', 'assigned_to', 'assigned_to_name',
             'status', 'status_display', 'closed_at', 'can_edit',
             'attachments', 'result', 'logs'
         ]
@@ -225,6 +225,7 @@ class DecisionSerializer(serializers.Serializer):
     """Serializer pour la décision initiale (approved/rejected)"""
     decision = serializers.ChoiceField(choices=['approved', 'rejected'])
     reason = serializers.CharField(required=False, allow_blank=True)
+    new_score = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, allow_null=True)
 
 
 class CompleteSerializer(serializers.Serializer):
