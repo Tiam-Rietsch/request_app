@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-4f^cooypbd-*v!1ml$oostu)d+ffvd$q+9k5xw2_xayq0c01kk
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend', '0.0.0.0']
 
 
 # Application definition
@@ -181,6 +181,8 @@ SPECTACULAR_SETTINGS = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -192,6 +194,8 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False  # Allow JS to read CSRF token
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
     "http://127.0.0.1:3000",
 ]
 

@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: requests_backend
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./db.sqlite3:/app/db.sqlite3
+      - ./media:/app/media
+    environment:
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+    networks:
+      - requests_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/api/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./request_front_end
+      dockerfile: Dockerfile
+    container_name: requests_frontend
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:8002
+      - PORT=3002
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - requests_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3002 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  requests_network:
+    driver: bridge
+
