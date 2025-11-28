@@ -164,7 +164,7 @@ export default function StudentDashboard() {
                 <tbody>
                   {recentRequests.map((req) => (
                     <tr key={req.id} className="border-b border-border hover:bg-secondary transition-colors">
-                      <td className="py-4 px-4">{req.subject_display || req.subject?.name || 'N/A'}</td>
+                      <td className="py-4 px-4">{req.subject?.name || 'N/A'}</td>
                       <td className="py-4 px-4">
                         <span className="px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-xs font-medium rounded">
                           {req.type?.toUpperCase()}

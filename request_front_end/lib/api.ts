@@ -1,5 +1,5 @@
 // API Client for Django Backend
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 export class ApiError extends Error {
   constructor(
@@ -304,12 +304,6 @@ export const requestsAPI = {
     return request<any>(`/api/requests/${id}/complete/`, {
       method: 'POST',
       data,
-    });
-  },
-
-  async close(id: string) {
-    return request<any>(`/api/requests/${id}/close/`, {
-      method: 'POST',
     });
   },
 

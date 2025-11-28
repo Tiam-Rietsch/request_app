@@ -9,12 +9,12 @@ import Link from "next/link"
 import { useAuth, useRequireAuth } from "@/lib/auth-context"
 import { requestsAPI } from "@/lib/api"
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { toast } from "sonner"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'
 
 const getStatusColor = (status: string) => {
   const colors: { [key: string]: string } = {
@@ -45,7 +45,6 @@ export default function StaffCelluleRequestDetailPage() {
   useRequireAuth(['lecturer', 'hod'])
   const { user, loading: authLoading } = useAuth()
   const params = useParams()
-  const router = useRouter()
   const requestId = params?.id as string
   
   const [request, setRequest] = useState<any>(null)
@@ -76,10 +75,10 @@ export default function StaffCelluleRequestDetailPage() {
     try {
       await requestsAPI.returnFromCellule(requestId)
       toast.success("Requête marquée comme retournée")
-      // Redirect back to cellule requests list
-      router.push('/staff/cellule-requests')
+      await fetchRequest()
     } catch (error: any) {
       toast.error(error.response?.data?.detail || "Erreur lors du retour")
+    } finally {
       setSubmitting(false)
     }
   }
@@ -242,10 +241,10 @@ export default function StaffCelluleRequestDetailPage() {
               </div>
             </Card>
 
-            {/* Result Block - Below request form */}
+            {/* Result Block (if exists) */}
             {request.result && (
               <Card className="p-6 border-2 border-green-200 dark:border-green-800">
-                <h2 className="text-xl font-semibold mb-4">Résultat de la Requête</h2>
+                <h2 className="text-xl font-semibold mb-4">Bloc Résultat</h2>
                 <div className="space-y-4">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
@@ -256,7 +255,7 @@ export default function StaffCelluleRequestDetailPage() {
                         {request.result.status === 'accepted' ? 'Acceptée' : 'Rejetée'}
                       </span>
                     </div>
-                    {request.result.new_score !== null && request.result.new_score !== undefined && (
+                    {request.result.new_score && (
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Nouvelle note</p>
                         <p className="text-2xl font-bold text-green-600">{request.result.new_score}/20</p>
@@ -265,7 +264,7 @@ export default function StaffCelluleRequestDetailPage() {
                   </div>
                   {request.result.reason && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">Description</p>
+                      <p className="text-sm text-muted-foreground mb-2">Raison</p>
                       <p className="text-sm p-4 bg-secondary rounded-lg whitespace-pre-wrap">{request.result.reason}</p>
                     </div>
                   )}
@@ -299,7 +298,6 @@ export default function StaffCelluleRequestDetailPage() {
             )}
 
             {/* Action Button - Mark as Returned */}
-            {/* Only show button for in_cellule status, not for returned */}
             {request.status === 'in_cellule' && (
               <Button
                 className="w-full gap-2 bg-purple-600 hover:bg-purple-700"
@@ -307,22 +305,8 @@ export default function StaffCelluleRequestDetailPage() {
                 disabled={submitting}
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {submitting ? "Traitement..." : "Note Mis à jour"}
+                {submitting ? "Traitement..." : "Marquer comme mis à jour"}
               </Button>
-            )}
-            {request.status === 'returned' && (
-              <Card className="p-4 bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
-                <p className="text-sm text-orange-700 dark:text-orange-300 font-medium">
-                  ✓ Requête retournée au personnel pour finalisation
-                </p>
-              </Card>
-            )}
-            {request.status === 'done' && (
-              <Card className="p-4 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                <p className="text-sm text-green-700 dark:text-green-300 font-medium">
-                  ✓ Requête terminée
-                </p>
-              </Card>
             )}
           </div>
 
@@ -332,31 +316,17 @@ export default function StaffCelluleRequestDetailPage() {
               <h2 className="text-lg font-semibold mb-4">Historique</h2>
               {request.logs && request.logs.length > 0 ? (
                 <div className="space-y-3">
-                  {[...request.logs].reverse().map((log: any, index: number) => {
-                    // Extract new score from log note if present
-                    const note = log.note || log.action || ''
-                    const newScoreMatch = note.match(/Nouvelle note[:\s]+([0-9.]+)/i)
-                    const newScore = newScoreMatch ? newScoreMatch[1] : null
-                    
-                    return (
-                      <div key={index} className="pb-3 border-b border-border last:border-0 last:pb-0">
-                        <p className="text-xs text-muted-foreground mb-1">
-                          {format(new Date(log.timestamp), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                        </p>
-                        {newScore ? (
-                          <div>
-                            <p className="text-base font-bold mb-1">Nouvelle note: {newScore}/20</p>
-                            <p className="text-sm text-muted-foreground">{note.replace(/\(?Nouvelle note[:\s]+[0-9.]+\)?/i, '').trim() || log.action}</p>
-                          </div>
-                        ) : (
-                          <p className="text-sm font-medium">{note}</p>
-                        )}
-                        {log.actor_name && (
-                          <p className="text-xs text-muted-foreground mt-1">Par: {log.actor_name}</p>
-                        )}
-                      </div>
-                    )
-                  })}
+                  {request.logs.map((log: any, index: number) => (
+                    <div key={index} className="pb-3 border-b border-border last:border-0 last:pb-0">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {format(new Date(log.timestamp), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                      </p>
+                      <p className="text-sm font-medium">{log.note || log.action}</p>
+                      {log.actor_name && (
+                        <p className="text-xs text-muted-foreground mt-1">Par: {log.actor_name}</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">Aucun historique disponible</p>

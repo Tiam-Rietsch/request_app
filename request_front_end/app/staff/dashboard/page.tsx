@@ -43,12 +43,9 @@ export default function StaffDashboard() {
 
   const fetchCelluleRequests = async () => {
     try {
-      // Fetch all requests and filter for in_cellule, returned, and done
-      const response = await requestsAPI.list()
+      const response = await requestsAPI.list({ status: 'in_cellule' })
       const results = response.results || response
-      const allRequests = Array.isArray(results) ? results : []
-      // Filter to show only in_cellule, returned, and done for cellule members
-      return allRequests.filter((req: any) => ['in_cellule', 'returned', 'done'].includes(req.status))
+      return Array.isArray(results) ? results : []
     } catch (error) {
       console.error("Failed to fetch cellule requests:", error)
       return []
@@ -320,9 +317,9 @@ export default function StaffDashboard() {
                   </div>
                 </div>
 
-                {celluleRequests.length === 0 ? (
+                {celluleRequests.filter(r => r.status === 'in_cellule').length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <p>Aucune requête en cellule informatique</p>
+                    <p>Aucune requête en traitement dans la cellule</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -331,21 +328,15 @@ export default function StaffDashboard() {
                         <tr>
                           <th className="text-left py-3 px-4 font-semibold">Étudiant</th>
                           <th className="text-left py-3 px-4 font-semibold">Matière</th>
-                          <th className="text-left py-3 px-4 font-semibold">Statut</th>
                           <th className="text-left py-3 px-4 font-semibold">Date</th>
                           <th className="text-right py-3 px-4 font-semibold">Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {celluleRequests.slice(0, 5).map((req) => (
+                        {celluleRequests.filter(r => r.status === 'in_cellule').slice(0, 5).map((req) => (
                           <tr key={req.id} className="border-b border-border hover:bg-secondary transition-colors">
                             <td className="py-4 px-4">{req.student_name || 'N/A'}</td>
-                            <td className="py-4 px-4">{req.subject_display || req.subject?.name || 'N/A'}</td>
-                            <td className="py-4 px-4">
-                              <span className={`px-2 py-1 rounded text-xs ${getStatusColor(req.status)}`}>
-                                {getStatusLabel(req.status)}
-                              </span>
-                            </td>
+                            <td className="py-4 px-4">{req.subject?.name || 'N/A'}</td>
                             <td className="py-4 px-4 text-muted-foreground">
                               {format(new Date(req.submitted_at), 'dd MMM yyyy', { locale: fr })}
                             </td>

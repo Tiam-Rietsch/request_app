@@ -85,7 +85,7 @@ export default function StudentRequestsPage() {
     {
       accessorKey: "subject",
       header: "Matière",
-      cell: ({ row }) => row.original.subject_display || row.original.subject?.name || 'N/A',
+      cell: ({ row }) => row.original.subject?.name || 'N/A',
     },
     {
       accessorKey: "type",

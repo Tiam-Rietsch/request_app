@@ -24,7 +24,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'
 
 const getStatusLabel = (status: string) => {
   const labels: { [key: string]: string } = {
@@ -76,9 +76,13 @@ export default function StaffRequestDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [showApproveModal, setShowApproveModal] = useState(false)
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
   const [approveReason, setApproveReason] = useState("")
   const [newScore, setNewScore] = useState("")
+  const [completeStatus, setCompleteStatus] = useState<"accepted" | "rejected">("accepted")
+  const [completeNewScore, setCompleteNewScore] = useState("")
+  const [completeReason, setCompleteReason] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -149,12 +153,24 @@ export default function StaffRequestDetailPage() {
   }
 
   const handleComplete = async () => {
+    if (completeStatus === 'accepted' && !completeNewScore) {
+      toast.error("Veuillez entrer une nouvelle note pour une requête acceptée")
+      return
+    }
+
     setSubmitting(true)
     try {
-      // Simply close the request - no form needed
-      await requestsAPI.close(requestId)
+      await requestsAPI.complete(requestId, {
+        status: completeStatus,
+        new_score: completeNewScore ? parseFloat(completeNewScore) : undefined,
+        reason: completeReason || undefined
+      })
       
       toast.success("Requête fermée avec succès")
+      setShowCompleteModal(false)
+      setCompleteStatus("accepted")
+      setCompleteNewScore("")
+      setCompleteReason("")
       await fetchRequest()
     } catch (error: any) {
       toast.error(error.response?.data?.detail || "Erreur lors de la fermeture")
@@ -321,10 +337,10 @@ export default function StaffRequestDetailPage() {
               </div>
             </Card>
 
-            {/* Result Block (if exists) - Below request form */}
+            {/* Result Block (if exists) */}
             {request.result && (
               <Card className="p-6 border-2 border-green-200 dark:border-green-800">
-                <h2 className="text-xl font-semibold mb-4">Résultat de la Requête</h2>
+                <h2 className="text-xl font-semibold mb-4">Bloc Résultat</h2>
                 <div className="space-y-4">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
@@ -335,7 +351,7 @@ export default function StaffRequestDetailPage() {
                         {request.result.status === 'accepted' ? 'Acceptée' : 'Rejetée'}
                       </span>
                     </div>
-                    {request.result.new_score !== null && request.result.new_score !== undefined && (
+                    {request.result.new_score && (
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Nouvelle note</p>
                         <p className="text-2xl font-bold text-green-600">{request.result.new_score}/20</p>
@@ -344,7 +360,7 @@ export default function StaffRequestDetailPage() {
                   </div>
                   {request.result.reason && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">Description</p>
+                      <p className="text-sm text-muted-foreground mb-2">Raison</p>
                       <p className="text-sm p-4 bg-secondary rounded-lg whitespace-pre-wrap">{request.result.reason}</p>
                     </div>
                   )}
@@ -378,8 +394,7 @@ export default function StaffRequestDetailPage() {
             )}
 
             {/* Action Buttons and Messages */}
-            {/* Check cellule_informatique FIRST - don't show message if user is cellule member */}
-            {request.status === 'in_cellule' && user?.lecturer_profile?.cellule_informatique !== true && (
+            {request.status === 'in_cellule' && (
               <Card className="p-4 bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800">
                 <p className="text-sm text-purple-700 dark:text-purple-300 font-medium">
                   ⏳ En attente de validation de la cellule informatique
@@ -410,11 +425,10 @@ export default function StaffRequestDetailPage() {
             {request.status === 'returned' && (
               <Button
                 className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
-                onClick={handleComplete}
-                disabled={submitting}
+                onClick={() => setShowCompleteModal(true)}
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {submitting ? "Fermeture..." : "Fermer la requête"}
+                Fermer la requête
               </Button>
             )}
           </div>
@@ -425,31 +439,17 @@ export default function StaffRequestDetailPage() {
               <h2 className="text-lg font-semibold mb-4">Historique</h2>
               {request.logs && request.logs.length > 0 ? (
                 <div className="space-y-3">
-                  {[...request.logs].reverse().map((log: any, index: number) => {
-                    // Extract new score from log note if present
-                    const note = log.note || log.action || ''
-                    const newScoreMatch = note.match(/Nouvelle note[:\s]+([0-9.]+)/i)
-                    const newScore = newScoreMatch ? newScoreMatch[1] : null
-                    
-                    return (
-                      <div key={index} className="pb-3 border-b border-border last:border-0 last:pb-0">
-                        <p className="text-xs text-muted-foreground mb-1">
-                          {format(new Date(log.timestamp), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                        </p>
-                        {newScore ? (
-                          <div>
-                            <p className="text-base font-bold mb-1">Nouvelle note: {newScore}/20</p>
-                            <p className="text-sm text-muted-foreground">{note.replace(/\(?Nouvelle note[:\s]+[0-9.]+\)?/i, '').trim() || log.action}</p>
-                          </div>
-                        ) : (
-                          <p className="text-sm font-medium">{note}</p>
-                        )}
-                        {log.actor_name && (
-                          <p className="text-xs text-muted-foreground mt-1">Par: {log.actor_name}</p>
-                        )}
-                      </div>
-                    )
-                  })}
+                  {request.logs.map((log: any, index: number) => (
+                    <div key={index} className="pb-3 border-b border-border last:border-0 last:pb-0">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {format(new Date(log.timestamp), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                      </p>
+                      <p className="text-sm font-medium">{log.note || log.action}</p>
+                      {log.actor_name && (
+                        <p className="text-xs text-muted-foreground mt-1">Par: {log.actor_name}</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">Aucun historique disponible</p>
@@ -583,6 +583,96 @@ export default function StaffRequestDetailPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Complete Modal */}
+      <Dialog open={showCompleteModal} onOpenChange={setShowCompleteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Fermer la requête</DialogTitle>
+            <DialogDescription>
+              Finalisez la requête avec le résultat final. Cette action clôturera définitivement la requête.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="complete-status">Décision finale *</Label>
+              <div className="flex gap-4 mt-2">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="complete-status"
+                    value="accepted"
+                    checked={completeStatus === "accepted"}
+                    onChange={(e) => setCompleteStatus(e.target.value as "accepted" | "rejected")}
+                  />
+                  <span>Acceptée</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="complete-status"
+                    value="rejected"
+                    checked={completeStatus === "rejected"}
+                    onChange={(e) => setCompleteStatus(e.target.value as "accepted" | "rejected")}
+                  />
+                  <span>Rejetée</span>
+                </label>
+              </div>
+            </div>
+
+            {completeStatus === "accepted" && (
+              <div>
+                <Label htmlFor="complete-new-score">Nouvelle note *</Label>
+                <input
+                  id="complete-new-score"
+                  type="number"
+                  min="0"
+                  max="20"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={completeNewScore}
+                  onChange={(e) => setCompleteNewScore(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md mt-2"
+                  required
+                />
+                <p className="text-xs text-muted-foreground mt-1">Sur 20</p>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="complete-reason">Raison (optionnel)</Label>
+              <Textarea
+                id="complete-reason"
+                placeholder="Ajouter un commentaire..."
+                value={completeReason}
+                onChange={(e) => setCompleteReason(e.target.value)}
+                rows={4}
+                className="mt-2"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCompleteModal(false)
+                setCompleteStatus("accepted")
+                setCompleteNewScore("")
+                setCompleteReason("")
+              }}
+              disabled={submitting}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleComplete}
+              disabled={submitting || (completeStatus === "accepted" && !completeNewScore)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {submitting ? "Traitement..." : "Fermer la requête"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </LayoutWrapper>
   )
 }

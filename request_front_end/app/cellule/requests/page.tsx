@@ -4,140 +4,184 @@ import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { DataTable } from "@/components/tables/data-table"
 import { LayoutWrapper } from "@/components/shared/layout-wrapper"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
-import { useAuth, useRequireAuth } from "@/lib/auth-context"
-import { requestsAPI } from "@/lib/api"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { ArrowLeftRight } from "lucide-react"
+
+interface Request {
+  id: number
+  student: string
+  subject: string
+  type: string
+  status: string
+  responsible: string
+  date: string
+}
+
+const allRequests: Request[] = [
+  {
+    id: 1,
+    student: "John Doe",
+    subject: "Advanced Algorithms",
+    type: "EXAM",
+    status: "in_cellule",
+    responsible: "Admin 1",
+    date: "Nov 20, 2024",
+  },
+  {
+    id: 2,
+    student: "Bob Johnson",
+    subject: "Web Development",
+    type: "EXAM",
+    status: "in_cellule",
+    responsible: "Admin 2",
+    date: "Nov 19, 2024",
+  },
+  {
+    id: 3,
+    student: "Alice Brown",
+    subject: "Database Systems",
+    type: "CC",
+    status: "returned",
+    responsible: "Admin 1",
+    date: "Nov 18, 2024",
+  },
+  {
+    id: 4,
+    student: "Charlie Wilson",
+    subject: "Advanced Algorithms",
+    type: "EXAM",
+    status: "in_cellule",
+    responsible: "Admin 2",
+    date: "Nov 17, 2024",
+  },
+]
 
 const getStatusColor = (status: string) => {
   const colors: { [key: string]: string } = {
-    sent: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-    received: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
-    approved: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-    rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
-    in_cellule: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-    returned: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-    done: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300",
+    sent: "status-sent",
+    received: "status-received",
+    approved: "status-approved",
+    rejected: "status-rejected",
+    in_cellule: "status-in_cellule",
+    returned: "status-returned",
+    done: "status-done",
   }
-  return colors[status] || colors.sent
+  return colors[status] || "status-sent"
 }
 
 export default function ITCellRequestsPage() {
-  useRequireAuth(['cellule', 'lecturer', 'hod']) // Allow lecturers with cellule_informatique flag
-  const { user } = useAuth()
   const router = useRouter()
-  const [requests, setRequests] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState("")
+  const [typeFilter, setTypeFilter] = useState("")
+  const [searchFilter, setSearchFilter] = useState("")
 
-  useEffect(() => {
-    if (user) {
-      fetchRequests()
-    }
-  }, [user])
-
-  const fetchRequests = async () => {
-    try {
-      const response = await requestsAPI.list({ status: 'in_cellule' })
-      const results = response.results || response
-      setRequests(Array.isArray(results) ? results : [])
-    } catch (error) {
-      console.error("Failed to fetch requests:", error)
-      setRequests([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleRowClick = (request: any) => {
+  const handleRowClick = (request: Request) => {
     router.push(`/cellule/requests/${request.id}`)
   }
 
-  const handleQuickReturn = async (requestId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      await requestsAPI.returnFromCellule(requestId)
-      toast.success("Requête marquée comme retournée")
-      await fetchRequests()
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Erreur lors du retour")
-    }
-  }
+  const filteredRequests = allRequests.filter((req) => {
+    const matchStatus = !statusFilter || req.status === statusFilter
+    const matchType = !typeFilter || req.type === typeFilter
+    const matchSearch = !searchFilter || req.student.toLowerCase().includes(searchFilter.toLowerCase())
+    return matchStatus && matchType && matchSearch
+  })
 
-  const columns: ColumnDef<any>[] = [
+  const columns: ColumnDef<Request>[] = [
     {
-      accessorKey: "student_name",
-      header: "Étudiant",
-      cell: ({ row }) => row.original.student_name,
+      accessorKey: "student",
+      header: "Student",
     },
     {
-      accessorKey: "subject_display",
-      header: "Matière",
-      cell: ({ row }) => row.original.subject_display,
+      accessorKey: "subject",
+      header: "Subject",
     },
     {
-      accessorKey: "type_display",
+      accessorKey: "type",
       header: "Type",
       cell: ({ row }) => (
         <span className="px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-xs font-medium rounded">
-          {row.original.type_display}
+          {row.getValue("type")}
         </span>
       ),
     },
     {
-      accessorKey: "submitted_at",
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string
+        return (
+          <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(status)}`}>
+            {status.replace("_", " ").toUpperCase()}
+          </span>
+        )
+      },
+    },
+    {
+      accessorKey: "responsible",
+      header: "Responsible",
+      cell: ({ row }) => <span className="text-muted-foreground">{row.getValue("responsible")}</span>,
+    },
+    {
+      accessorKey: "date",
       header: "Date",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {new Date(row.original.submitted_at).toLocaleDateString("fr-FR")}
-        </span>
-      ),
-    },
-    {
-      id: "actions",
-      header: "Action rapide",
-      cell: ({ row }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={(e) => handleQuickReturn(row.original.id, e)}
-          className="gap-2"
-        >
-          <ArrowLeftRight className="h-4 w-4" />
-          Marquer retournée
-        </Button>
-      ),
+      cell: ({ row }) => <span className="text-muted-foreground">{row.getValue("date")}</span>,
     },
   ]
 
-  if (loading) {
-    return (
-      <LayoutWrapper role="cellule" userName={user ? `${user.first_name} ${user.last_name}` : "Cellule"} userRole="cellule">
-        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Chargement...</p>
-          </div>
-        </div>
-      </LayoutWrapper>
-    )
-  }
-
   return (
-    <LayoutWrapper role="cellule" userName={user ? `${user.first_name} ${user.last_name}` : "Cellule"} userRole="cellule">
-      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+    <LayoutWrapper role="cellule" userName="IT Cell Admin" userRole="cellule">
+      <div className="p-4 sm:p-6 max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Cellule Informatique</h1>
-          <p className="text-muted-foreground">Requêtes en traitement dans la cellule informatique</p>
+          <h1 className="text-3xl font-bold mb-2">Requests in IT Cell</h1>
+          <p className="text-muted-foreground">Process approved grade contestation requests</p>
         </div>
+
+        {/* Filters */}
+        <Card className="p-6 mb-6">
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md"
+              >
+                <option value="">All Statuses</option>
+                <option value="in_cellule">In Processing</option>
+                <option value="returned">Returned</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Type</label>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md"
+              >
+                <option value="">All Types</option>
+                <option value="CC">CC</option>
+                <option value="EXAM">EXAM</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Search</label>
+              <input
+                type="text"
+                placeholder="Search students..."
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md"
+              />
+            </div>
+          </div>
+        </Card>
 
         {/* Table */}
         <Card className="p-6">
           <DataTable
             columns={columns}
-            data={requests}
+            data={filteredRequests}
             enablePagination={true}
             enableSorting={true}
             onRowClick={handleRowClick}

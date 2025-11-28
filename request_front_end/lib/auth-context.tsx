@@ -134,33 +134,21 @@ export function useRequireAuth(allowedRoles?: string[]) {
     if (!loading) {
       if (!user) {
         router.push('/login');
-      } else if (allowedRoles) {
-        // Check if user has access via role or cellule_informatique flag
-        const hasCelluleAccess = user?.lecturer_profile?.cellule_informatique === true
-        const userRole = user.role
-        
-        // Allow access if:
-        // 1. Role is in allowedRoles, OR
-        // 2. User is lecturer/hod with cellule_informatique flag and 'cellule' is in allowedRoles
-        const hasAccess = allowedRoles.includes(userRole) || 
-          (hasCelluleAccess && (userRole === 'lecturer' || userRole === 'hod') && allowedRoles.includes('cellule'))
-        
-        if (!hasAccess) {
-          // Redirect to appropriate dashboard if wrong role
-          switch (userRole) {
-            case 'student':
-              router.push('/student/dashboard');
-              break;
-            case 'lecturer':
-            case 'hod':
-              router.push('/staff/dashboard');
-              break;
-            case 'cellule':
-              router.push('/cellule/dashboard');
-              break;
-            default:
-              router.push('/');
-          }
+      } else if (allowedRoles && !allowedRoles.includes(user.role)) {
+        // Redirect to appropriate dashboard if wrong role
+        switch (user.role) {
+          case 'student':
+            router.push('/student/dashboard');
+            break;
+          case 'lecturer':
+          case 'hod':
+            router.push('/staff/dashboard');
+            break;
+          case 'cellule':
+            router.push('/cellule/dashboard');
+            break;
+          default:
+            router.push('/');
         }
       }
     }

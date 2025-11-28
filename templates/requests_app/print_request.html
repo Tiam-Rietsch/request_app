@@ -272,38 +272,6 @@
                 <div class="card-title">Description</div>
                 <div class="description-box">{{ request.description }}</div>
             </div>
-
-            <!-- Result Card (if exists) -->
-            {% if request.result %}
-            <div class="card" style="border: 2px solid #10b981; background: #f0fdf4;">
-                <div class="card-title" style="color: #059669;">Résultat de la Requête</div>
-                
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="info-label">Décision</div>
-                        <div class="info-value">
-                            <span class="badge {% if request.result.status == 'accepted' %}badge-cc{% else %}badge-exam{% endif %}">
-                                {% if request.result.status == 'accepted' %}Acceptée{% else %}Rejetée{% endif %}
-                            </span>
-                        </div>
-                    </div>
-
-                    {% if request.result.new_score %}
-                    <div class="info-item">
-                        <div class="info-label">Nouvelle note</div>
-                        <div class="info-value" style="font-size: 20px; font-weight: 700; color: #059669;">{{ request.result.new_score }}/20</div>
-                    </div>
-                    {% endif %}
-                </div>
-
-                {% if request.result.reason %}
-                <div style="margin-top: 1rem;">
-                    <div class="info-label">Description</div>
-                    <div class="description-box" style="margin-top: 0.5rem;">{{ request.result.reason }}</div>
-                </div>
-                {% endif %}
-            </div>
-            {% endif %}
         </div>
     </div>
 </body>

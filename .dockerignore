@@ -55,3 +55,7 @@ docker-compose*.yml
 .coverage
 htmlcov/
 
+# Frontend
+request_front_end/
+
+

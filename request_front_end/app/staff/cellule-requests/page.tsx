@@ -40,15 +40,9 @@ export default function StaffCelluleRequestsPage() {
 
   const fetchRequests = async () => {
     try {
-      // Fetch in_cellule, returned, and done requests
-      // The backend will filter these for cellule members
-      const response = await requestsAPI.list()
+      const response = await requestsAPI.list({ status: 'in_cellule' })
       const results = response.results || response
-      // Filter to show only in_cellule, returned, and done
-      const filtered = Array.isArray(results) 
-        ? results.filter((req: any) => ['in_cellule', 'returned', 'done'].includes(req.status))
-        : []
-      setRequests(filtered)
+      setRequests(Array.isArray(results) ? results : [])
     } catch (error) {
       toast.error("Failed to load requests.")
       setRequests([])
@@ -104,23 +98,17 @@ export default function StaffCelluleRequestsPage() {
     {
       id: "actions",
       header: "Action rapide",
-      cell: ({ row }) => {
-        // Only show action button for in_cellule status, not for returned
-        if (row.original.status === 'in_cellule') {
-          return (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => handleQuickReturn(row.original.id, e)}
-              className="gap-2"
-            >
-              <ArrowLeftRight className="h-4 w-4" />
-              Marquer retournée
-            </Button>
-          )
-        }
-        return <span className="text-muted-foreground text-sm">-</span>
-      },
+      cell: ({ row }) => (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={(e) => handleQuickReturn(row.original.id, e)}
+          className="gap-2"
+        >
+          <ArrowLeftRight className="h-4 w-4" />
+          Marquer retournée
+        </Button>
+      ),
     },
   ]
 
@@ -130,20 +118,6 @@ export default function StaffCelluleRequestsPage() {
         <div className="p-4 sm:p-6 max-w-7xl mx-auto">
           <div className="text-center py-12">
             <p className="text-muted-foreground">Chargement...</p>
-          </div>
-        </div>
-      </LayoutWrapper>
-    )
-  }
-
-  // Check if user has cellule_informatique access
-  if (!user?.lecturer_profile?.cellule_informatique) {
-    return (
-      <LayoutWrapper role="staff" userName={user ? `${user.first_name} ${user.last_name}` : "Enseignant"} userRole="staff">
-        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <p className="text-red-500 font-medium">Accès refusé. Vous n'êtes pas autorisé à accéder à cette page.</p>
-            <p className="text-muted-foreground mt-2">Seuls les membres de la cellule informatique peuvent accéder à cette section.</p>
           </div>
         </div>
       </LayoutWrapper>

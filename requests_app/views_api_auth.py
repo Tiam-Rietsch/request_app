@@ -5,6 +5,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import ensure_csrf_cookie
 from .models import Student, Lecturer
 from .serializers import StudentSerializer, LecturerSerializer
 
@@ -17,8 +19,6 @@ def get_user_role(user):
         return 'student'
     if hasattr(user, 'lecturer_profile'):
         lecturer = user.lecturer_profile
-        # Keep lecturer/hod role even if cellule_informatique is True
-        # The flag is checked separately for IT cell access
         if lecturer.is_hod:
             return 'hod'
         return 'lecturer'
@@ -81,7 +81,6 @@ def api_login(request):
             user_data['lecturer_profile'] = {
                 'id': lecturer.id,
                 'is_hod': lecturer.is_hod,
-                'cellule_informatique': lecturer.cellule_informatique,  # Add this field!
                 'field': lecturer.field.id if lecturer.field else None,
                 'field_name': lecturer.field.name if lecturer.field else None,
             }
@@ -200,7 +199,17 @@ def api_current_user(request):
             'is_hod': lecturer.is_hod,
             'field': lecturer.field.id if lecturer.field else None,
             'field_name': lecturer.field.name if lecturer.field else None,
+            'cellule_informatique': lecturer.cellule_informatique,
         }
     
     return Response(user_data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@ensure_csrf_cookie
+def get_csrf_token(request):
+    """Get CSRF token for the frontend"""
+    token = get_token(request)
+    return Response({'csrfToken': token}, status=status.HTTP_200_OK)
 
