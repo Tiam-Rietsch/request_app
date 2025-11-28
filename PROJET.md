@@ -1,8 +1,8 @@
-# Spécification complète — Système de gestion de requêtes (Django REST Framework + HTMX)
+# Spécification complète — Système de gestion de requêtes (Django REST Framework + Next.js)
 
 > **Langue : Français**
 
-Ce document décrit de manière exhaustive le besoin, le modèle de données, les règles métier, l'API (DRF), les fragments HTMX, les permissions, et fournit des extraits de code Django prêts à l'emploi (modèles, serializers, viewsets, permissions, templates HTMX). L'objectif est d'avoir un **document opérationnel** pour démarrer l'implémentation.
+Ce document décrit de manière exhaustive le besoin, le modèle de données, les règles métier, l'API (DRF), l'interface Next.js, les permissions, et fournit des extraits de code Django prêts à l'emploi (modèles, serializers, viewsets, permissions). L'objectif est d'avoir un **document opérationnel** pour démarrer l'implémentation.
 
 ---
 
@@ -13,14 +13,14 @@ Ce document décrit de manière exhaustive le besoin, le modèle de données, le
 3. Modèle conceptuel (entités + attributs)
 4. Règles métier et transitions d'état
 5. API (DRF) — endpoints et comportements
-6. HTMX — fragments et échanges
-7. UI / Templates (exemples) en français
+6. Frontend Next.js — architecture et composants
+7. UI / Interface utilisateur (Next.js + React)
 8. Permissions et sécurité (DRF + Django)
 9. Stockage des fichiers et impression HTML
 10. Journalisation / Notifications in-app
 11. Tests & qualité
 12. Déploiement & settings importants
-13. Code d'exemple (Django) : `models.py`, `serializers.py`, `permissions.py`, `views.py`, routes et templates HTMX
+13. Code d'exemple (Django) : `models.py`, `serializers.py`, `permissions.py`, `views.py`, routes API
 14. Plan MVP et checklist
 15. Annexes : contraintes et décisions prises
 
@@ -39,7 +39,7 @@ Un système web où des étudiants déposent des requêtes de contestation de no
 * Cellule informatique travaille sur la requête `in_cellule` (ajoute PJ, annotations) puis la **retourne** (`returned`).
 * HOD/enseignant vérifie le retour et finalise (`done`) en enregistrant le `RequestResult` final (`accepted` ou `rejected`, éventuellement `new_score`).
 
-L'application est entièrement en français et utilise DRF + HTMX pour des mises à jour partielles conviviales.
+L'application est entièrement en français et utilise DRF (backend) + Next.js (frontend) pour une interface moderne et réactive.
 
 ---
 
@@ -132,60 +132,47 @@ Les relations et attributs détaillés ont été spécifiés — voir la partie 
 
 ---
 
-## 6. HTMX — fragments et échanges
+## 6. Frontend Next.js — architecture et composants
 
-HTMX sera utilisé pour :
+Le frontend est construit avec **Next.js 16** et **React 19**, utilisant :
 
-* boutons d'action rapides (`received`, `approve/reject`, `send to cellule`, `return`, `complete`) qui retournent des fragments HTML mis à jour (ligne du tableau, détail, circuit map)
-* modales pour saisir `RequestResult` (accept/reject)
-* upload d'attachements avec retour de la liste d'attachements (fragment)
+* **API Client** : Bibliothèque Axios personnalisée pour communiquer avec le backend Django
+* **Authentification** : Context API React pour gérer l'état utilisateur et les sessions
+* **Composants UI** : Shadcn UI (Radix UI) pour les composants réutilisables
+* **Styling** : Tailwind CSS pour le design moderne et responsive
+* **Routing** : Next.js App Router pour la navigation côté client
 
-### Exemples d'échanges HTMX
+### Architecture Frontend
 
-* `hx-post="/htmx/requests/{id}/acknowledge/" hx-swap="outerHTML"` sur la ligne du tableau pour marquer `received` et remplacer la ligne.
-* `hx-get="/htmx/requests/{id}/modal_decision/"` pour afficher un modal permettant `approve` ou `reject`.
+* **Pages** : Routes Next.js dans `app/` (login, signup, dashboards, listes, détails)
+* **Composants** : Composants réutilisables dans `components/` (sidebar, navbar, progress-map, tables)
+* **API Client** : `lib/api.ts` pour toutes les requêtes HTTP vers le backend
+* **Context** : `lib/auth-context.tsx` pour la gestion de l'authentification globale
+
+### Exemples d'interactions
+
+* Les boutons d'action (`received`, `approve/reject`, `send to cellule`, `return`, `complete`) appellent les endpoints API via `requestsAPI` et mettent à jour l'interface React
+* Modales React (Dialog de Shadcn UI) pour saisir `RequestResult` (accept/reject)
+* Upload d'attachements avec retour de la liste mise à jour via l'API
 
 ---
 
-## 7. UI / Templates (exemples) — en français
+## 7. UI / Interface utilisateur (Next.js + React)
 
-### Circuit map (HTML simplifié)
+### Circuit map (Progress Map Component)
 
-```html
-<div class="circuit-map flex items-center gap-4">
-  <div class="step" data-step="sent">📤<div class="label">Envoyée</div></div>
-  <div class="connector">—</div>
-  <div class="step" data-step="received">👀<div class="label">Reçue</div></div>
-  <div class="connector">—</div>
-  <div class="step" data-step="approved">✔️<div class="label">Approuvée</div></div>
-  <div class="connector">—</div>
-  <div class="step" data-step="in_cellule">🖥️<div class="label">En cellule</div></div>
-  <div class="connector">—</div>
-  <div class="step" data-step="returned">🔁<div class="label">Retournée</div></div>
-  <div class="connector">—</div>
-  <div class="step" data-step="done">✅<div class="label">Terminée</div></div>
-</div>
-```
+Le composant `ProgressMap` affiche visuellement l'état de progression d'une requête :
 
-* Le CSS (Tailwind recommandé) stylera la `.step` active avec `bg-indigo-600 text-white rounded-full p-3` ; les étapes non atteintes seront `opacity-40`.
-* HTMX peut demander `GET /htmx/requests/{id}/circuit_map/` qui renvoie le fragment avec l'étape active en variable de rendu.
+* Points avec icônes de validation pour les étapes complétées
+* Couleur verte pour les étapes passées, grise pour les étapes en attente
+* Tooltips au survol pour afficher les labels des étapes
+* Design moderne et minimaliste
 
 ### Formulaire création requête (sélects en cascade)
 
-* Sélection : **Niveau** → charge les **Filières** disponibles (via `/api/fields/?level_id=...`) → sélection **Filière** charge **Axes** (`/api/axes/?field_id=...`) → sélection **Matière** (`/api/subjects/?field_id=...&level_id=...`).
-* Extrait HTML :
-
-```html
-<form method="post" action="/api/requests/" enctype="multipart/form-data" hx-post="/api/requests/" hx-swap="outerHTML">
-  <select name="class_level" id="class_level" hx-get="/api/fields/?level_id={value}" hx-target="#field-select" hx-swap="innerHTML">
-    <!-- options niveaux -->
-  </select>
-  <div id="field-select"> <!-- server-rendered options de filiere --> </div>
-  <div id="axis-select"></div>
-  <input type="file" name="attachments" multiple />
-  <button type="submit">Soumettre</button>
-</form>
-```
+* Sélection : **Niveau** → charge les **Filières** disponibles (via `/api/fields/?level_id=...`) → sélection **Filière** charge **Axes** (`/api/axes/?field_id=...`) → sélection **Matière** (`/api/subjects/?field_id=...&level_id=...`)
+* Implémentation React avec `useState` et `useEffect` pour gérer les dépendances entre sélects
+* Validation côté client avec Zod et react-hook-form
 
 ---
 
@@ -195,7 +182,7 @@ HTMX sera utilisé pour :
 
 * Vérifier rôle de l'utilisateur (`user.has_role('lecturer')`) et object-level (ex: `request.assigned_to == user` ou `user.is_hod_of(field)`)
 * Endpoints sensibles (approve, send_to_cellule, complete) vérifiés côté serveur.
-* CSRF activé pour les requêtes HTMX (session-based auth recommandée).
+* CSRF activé pour les requêtes API (session-based auth avec cookies).
 
 ### Classe de permission DRF (exemple)
 
@@ -449,7 +436,7 @@ class IsCellule(BasePermission):
 
 ---
 
-### `views.py` (extraits DRF + HTMX endpoints)
+### `views.py` (extraits DRF ViewSets)
 
 ```python
 from rest_framework import viewsets, status
@@ -537,11 +524,18 @@ class RequestViewSet(viewsets.ModelViewSet):
 ```python
 from rest_framework.routers import DefaultRouter
 from .views import RequestViewSet
+from . import views_api_auth
 
 router = DefaultRouter()
 router.register(r'requests', RequestViewSet, basename='request')
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('api/', include(router.urls)),
+    path('api/auth/login/', views_api_auth.api_login, name='api_login'),
+    path('api/auth/logout/', views_api_auth.api_logout, name='api_logout'),
+    path('api/auth/signup/', views_api_auth.api_signup, name='api_signup'),
+    path('api/auth/me/', views_api_auth.api_current_user, name='api_current_user'),
+]
 ```
 
 ---
@@ -549,25 +543,27 @@ urlpatterns = router.urls
 ## 14. Plan MVP et checklist (priorité)
 
 1. Modèles + migrations + admin pour `ClassLevel`, `Field`, `Axis`, `Subject`.
-2. Auth (session) + pages login/logout.
-3. Formulaire de création requête (étudiant) avec selects en cascade et upload d'attachements.
-4. Inbox enseignant/HOD + action `received`.
-5. Décision `approved`/`rejected` et logique `rejected -> done`.
-6. Envoi à `in_cellule` et interface Cellule (upload PJ + `return`).
-7. Finalisation `done` + RequestResult.
-8. Impression HTML (page stylée) pour requête.
-9. Tests et polish UI/UX (circuit map HTMX fragments).
+2. API Auth (session) + endpoints login/logout/signup pour Next.js.
+3. Formulaire de création requête (étudiant) avec selects en cascade et upload d'attachements (Next.js).
+4. Inbox enseignant/HOD + action `received` (Next.js).
+5. Décision `approved`/`rejected` et logique `rejected -> done` (Next.js).
+6. Envoi à `in_cellule` et interface Cellule (upload PJ + `return`) (Next.js).
+7. Finalisation `done` + RequestResult (Next.js).
+8. Impression HTML (page stylée) pour requête (template Django pour print).
+9. Tests et polish UI/UX (circuit map React component).
 
 ---
 
 ## 15. Annexes : décisions et contraintes reprises
 
 * Langue : français.
+* Frontend : Next.js 16 avec React 19, Tailwind CSS, Shadcn UI.
+* Backend : Django REST Framework avec session-based authentication.
 * Stockage : Django `MEDIA_ROOT` (local) — pas d'S3.
 * Pas d'e-mails ni SMS — notifications in-app seulement.
 * Les enseignants sont supposés présents (pas de remplacement automatique).
 * Etudiant peut modifier requête avant `received` uniquement.
-* Cellule = rôle `cellule_informatique` et voit les demandes `in_cellule`.
+* Cellule = rôle `cellule_informatique` (flag sur Lecturer) et voit les demandes `in_cellule`, `returned`, `done`.
 * Mapping filières/niveaux/axes géré via admin par Super Admin.
 
 ---
