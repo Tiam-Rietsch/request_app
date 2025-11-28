@@ -124,4 +124,4 @@ Backend environment variables are set in `docker-compose.yml`:
 - **Backend API**: http://localhost:8002/api/
 - **API Documentation (Swagger)**: http://localhost:8002/api/schema/swagger-ui/
 - **Django Admin**: http://localhost:8002/admin/
-- **PostgreSQL**: localhost:5432
+- **PostgreSQL**: localhost:5532 (external port, internal port is 5432)
