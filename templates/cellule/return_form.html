@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Retourner - Requête #{{ request_obj.id|truncatechars:8 }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px;">
+    <div class="flex flex-between items-center mb-3">
+        <h1>↩️ Retourner la requête</h1>
+        <a href="/cellule/requests/{{ request_obj.id }}/" class="btn btn-secondary">← Retour</a>
+    </div>
+
+    <!-- Request Summary -->
+    <div class="card mb-2">
+        <div class="card-header">
+            <h3 class="card-title">Résumé de la requête</h3>
+        </div>
+        <div style="padding: 1.5rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Étudiant</strong>
+                    <p style="margin: 0.25rem 0 0 0;">{{ request_obj.student_name }} ({{ request_obj.matricule }})</p>
+                </div>
+                <div>
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Matière</strong>
+                    <p style="margin: 0.25rem 0 0 0; color: var(--primary);">{{ request_obj.subject.name }}</p>
+                </div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <strong style="color: var(--text-secondary); font-size: 0.875rem;">Responsable</strong>
+                <p style="margin: 0.25rem 0 0 0;">{{ request_obj.assigned_to.get_full_name }}</p>
+            </div>
+            <div>
+                <strong style="color: var(--text-secondary); font-size: 0.875rem;">Description</strong>
+                <p style="margin: 0.25rem 0 0 0; padding: 1rem; background: var(--background); border-radius: 4px; line-height: 1.6;">
+                    {{ request_obj.description }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Return Form -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Confirmer le retour</h3>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <strong>📌 Information:</strong> Assurez-vous d'avoir terminé le traitement de cette requête avant de la retourner au responsable.
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- Optional Note -->
+                <div class="form-group">
+                    <label for="note">Note (optionnel)</label>
+                    <textarea
+                        name="note"
+                        id="note"
+                        class="form-control"
+                        rows="3"
+                        placeholder="Ajoutez une note pour le responsable (optionnel)"
+                    ></textarea>
+                    <small style="color: var(--text-secondary);">
+                        Par exemple: "Note modifiée dans le système", "Traitement effectué", etc.
+                    </small>
+                </div>
+
+                <!-- Warning Box -->
+                <div class="alert alert-warning">
+                    <strong>⚠️ Attention:</strong> Cette action retournera la requête au responsable ({{ request_obj.assigned_to.get_full_name }}) qui pourra alors la marquer comme terminée.
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="flex gap-2 mt-2">
+                    <button type="submit" class="btn btn-success">
+                        ↩️ Retourner au responsable
+                    </button>
+                    <a href="/cellule/requests/{{ request_obj.id }}/" class="btn btn-outline">
+                        Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Process Flow -->
+    <div class="card mt-2">
+        <div class="card-header">
+            <h4 style="margin: 0; font-size: 1rem;">📊 Flux de traitement</h4>
+        </div>
+        <div style="padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; overflow-x: auto; padding: 1rem 0;">
+                <div style="text-align: center; min-width: 100px;">
+                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--success); color: white; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem;">✓</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Approuvée</div>
+                </div>
+                <div style="font-size: 1.5rem; color: var(--text-secondary);">→</div>
+                <div style="text-align: center; min-width: 100px;">
+                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--success); color: white; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem;">✓</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">En cellule</div>
+                </div>
+                <div style="font-size: 1.5rem; color: var(--primary);">→</div>
+                <div style="text-align: center; min-width: 100px;">
+                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; font-size: 1.5rem;">🎯</div>
+                    <div style="font-size: 0.75rem; font-weight: 600; color: var(--primary);">Retournée</div>
+                </div>
+                <div style="font-size: 1.5rem; color: var(--text-secondary);">→</div>
+                <div style="text-align: center; min-width: 100px;">
+                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--background); border: 2px dashed var(--border); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem;">?</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Terminée</div>
+                </div>
+            </div>
+            <p style="margin: 1rem 0 0 0; text-align: center; color: var(--text-secondary); font-size: 0.875rem;">
+                La requête sera retournée au responsable pour finalisation
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-expand textarea
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.querySelector('textarea');
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
+});
+</script>
+{% endblock %}

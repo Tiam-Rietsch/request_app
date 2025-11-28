@@ -1,0 +1,133 @@
+<!-- Progress Map Component -->
+<!-- Usage: {% include 'requests/progress_map.html' with request=request_obj %} -->
+
+<div class="card mb-2 no-print">
+    <div class="card-header">
+        <h3 class="card-title">📍 Suivi de la requête</h3>
+    </div>
+    <div class="progress-map">
+        <!-- Step 1: Envoyée -->
+        <div class="progress-step {% if request.status == 'sent' %}active{% elif request.status != 'sent' %}completed{% endif %}">
+            <div class="step-icon">
+                {% if request.status == 'sent' %}
+                    <span style="font-size: 1.5rem;">📤</span>
+                {% else %}
+                    <span style="font-size: 1.5rem;">✓</span>
+                {% endif %}
+            </div>
+            <div class="step-content">
+                <div class="step-title">Envoyée</div>
+                <div class="step-desc">Requête soumise</div>
+                {% if request.submitted_at %}
+                    <div class="step-time">{{ request.submitted_at|date:"d/m/Y H:i" }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Step 2: Reçue -->
+        <div class="progress-step {% if request.status == 'received' %}active{% elif request.status in 'approved,rejected,in_cellule,returned,done' %}completed{% endif %}">
+            <div class="step-icon">
+                {% if request.status == 'received' %}
+                    <span style="font-size: 1.5rem;">👀</span>
+                {% elif request.status in 'approved,rejected,in_cellule,returned,done' %}
+                    <span style="font-size: 1.5rem;">✓</span>
+                {% else %}
+                    <span style="font-size: 1.5rem; opacity: 0.3;">📥</span>
+                {% endif %}
+            </div>
+            <div class="step-content">
+                <div class="step-title">Reçue</div>
+                <div class="step-desc">Prise en charge</div>
+                {% if request.assigned_to %}
+                    <div class="step-time">Par {{ request.assigned_to.get_full_name }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Step 3: Décision (Approuvée/Rejetée) -->
+        <div class="progress-step {% if request.status in 'approved,rejected' %}active{% elif request.status in 'in_cellule,returned,done' %}completed{% endif %}">
+            <div class="step-icon">
+                {% if request.status == 'approved' %}
+                    <span style="font-size: 1.5rem;">✅</span>
+                {% elif request.status == 'rejected' %}
+                    <span style="font-size: 1.5rem;">❌</span>
+                {% elif request.status in 'in_cellule,returned,done' %}
+                    <span style="font-size: 1.5rem;">✓</span>
+                {% else %}
+                    <span style="font-size: 1.5rem; opacity: 0.3;">⚖️</span>
+                {% endif %}
+            </div>
+            <div class="step-content">
+                <div class="step-title">
+                    {% if request.status == 'approved' %}
+                        Approuvée
+                    {% elif request.status == 'rejected' %}
+                        Rejetée
+                    {% else %}
+                        Décision
+                    {% endif %}
+                </div>
+                <div class="step-desc">
+                    {% if request.status == 'approved' %}
+                        Demande acceptée
+                    {% elif request.status == 'rejected' %}
+                        Demande refusée
+                    {% else %}
+                        En attente de décision
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: En Cellule (only if approved) -->
+        {% if request.status in 'approved,in_cellule,returned,done' %}
+        <div class="progress-step {% if request.status == 'in_cellule' %}active{% elif request.status in 'returned,done' %}completed{% endif %}">
+            <div class="step-icon">
+                {% if request.status == 'in_cellule' %}
+                    <span style="font-size: 1.5rem;">💻</span>
+                {% elif request.status in 'returned,done' %}
+                    <span style="font-size: 1.5rem;">✓</span>
+                {% else %}
+                    <span style="font-size: 1.5rem; opacity: 0.3;">💻</span>
+                {% endif %}
+            </div>
+            <div class="step-content">
+                <div class="step-title">En Cellule</div>
+                <div class="step-desc">Traitement informatique</div>
+            </div>
+        </div>
+
+        <!-- Step 5: Retournée -->
+        <div class="progress-step {% if request.status == 'returned' %}active{% elif request.status == 'done' %}completed{% endif %}">
+            <div class="step-icon">
+                {% if request.status == 'returned' %}
+                    <span style="font-size: 1.5rem;">↩️</span>
+                {% elif request.status == 'done' %}
+                    <span style="font-size: 1.5rem;">✓</span>
+                {% else %}
+                    <span style="font-size: 1.5rem; opacity: 0.3;">↩️</span>
+                {% endif %}
+            </div>
+            <div class="step-content">
+                <div class="step-title">Retournée</div>
+                <div class="step-desc">Retour au responsable</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Step 6: Terminée -->
+        <div class="progress-step {% if request.status == 'done' %}active completed{% endif %}">
+            <div class="step-icon">
+                {% if request.status == 'done' %}
+                    <span style="font-size: 1.5rem;">🎉</span>
+                {% else %}
+                    <span style="font-size: 1.5rem; opacity: 0.3;">🏁</span>
+                {% endif %}
+            </div>
+            <div class="step-content">
+                <div class="step-title">Terminée</div>
+                <div class="step-desc">Traitement complet</div>
+            </div>
+        </div>
+    </div>
+</div>

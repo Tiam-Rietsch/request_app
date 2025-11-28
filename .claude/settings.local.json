@@ -10,7 +10,9 @@
       "Bash(cmd //c \"venv\\Scripts\\activate.bat && django-admin startproject requests_system .\")",
       "Bash(cmd //c \"venv\\Scripts\\activate.bat && python manage.py startapp requests_app\")",
       "Bash(cmd //c \"venv\\Scripts\\activate.bat && python manage.py makemigrations\")",
-      "Bash(cmd //c \"venv\\Scripts\\activate.bat && python manage.py migrate\")"
+      "Bash(cmd //c \"venv\\Scripts\\activate.bat && python manage.py migrate\")",
+      "Bash(python setup_database.py:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Étudiant{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-3">📊 Tableau de Bord Étudiant</h1>
+
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h2 style="margin: 0; color: white;">{{ total_requests }}</h2>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Total des requêtes</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+            <h2 style="margin: 0; color: white;">{{ pending_requests }}</h2>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">En cours de traitement</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+            <h2 style="margin: 0; color: white;">{{ completed_requests }}</h2>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Requêtes terminées</p>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card mb-3">
+        <h3 class="mb-2">Actions rapides</h3>
+        <div style="display: flex; gap: 1rem;">
+            <a href="{% url 'student_create_request' %}" class="btn btn-primary">➕ Nouvelle requête</a>
+            <a href="{% url 'student_requests' %}" class="btn btn-outline">📋 Voir toutes mes requêtes</a>
+        </div>
+    </div>
+
+    <!-- Recent Requests -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Requêtes récentes</h3>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Matière</th>
+                        <th>Type</th>
+                        <th>Statut</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in recent_requests %}
+                    <tr>
+                        <td><strong>{{ req.subject.name }}</strong></td>
+                        <td>{{ req.get_type_display }}</td>
+                        <td><span class="badge badge-{{ req.status }}">{{ req.get_status_display }}</span></td>
+                        <td>{{ req.submitted_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <a href="{% url 'student_request_detail' req.id %}" class="btn btn-sm btn-outline">Détails</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center" style="padding: 2rem; color: var(--text-secondary);">
+                            Aucune requête pour le moment.<br>
+                            <a href="{% url 'student_create_request' %}" class="btn btn-primary mt-1">Créer votre première requête</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

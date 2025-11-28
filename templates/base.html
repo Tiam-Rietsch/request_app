@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Système de Gestion de Requêtes{% endblock %}</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar no-print">
+        <div class="container-fluid">
+            <div class="navbar-content">
+                <a href="{% url 'home' %}" class="navbar-brand">Gestion de Requêtes</a>
+
+                <ul class="navbar-menu">
+                    {% if user.is_authenticated %}
+                        <li><span>Bonjour, <strong>{{ user.get_full_name|default:user.username }}</strong></span></li>
+
+                        {% if user.student_profile %}
+                            <li><span class="badge badge-sent">Étudiant</span></li>
+                        {% elif user.lecturer_profile %}
+                            {% if user.lecturer_profile.is_hod %}
+                                <li><span class="badge badge-approved">Chef de Département</span></li>
+                            {% else %}
+                                <li><span class="badge badge-received">Enseignant</span></li>
+                            {% endif %}
+                        {% elif user.groups.all|length > 0 and 'cellule_informatique' in user.groups.all.0.name %}
+                            <li><span class="badge badge-in_cellule">Cellule Informatique</span></li>
+                        {% elif user.is_superuser %}
+                            <li><span class="badge badge-done">Administrateur</span></li>
+                        {% endif %}
+
+                        <li><a href="{% url 'logout' %}">Déconnexion</a></li>
+                    {% else %}
+                        <li><a href="{% url 'login' %}">Connexion</a></li>
+                        <li><a href="{% url 'signup' %}" class="btn btn-primary btn-sm">Inscription</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex">
+        <!-- Sidebar -->
+        {% if user.is_authenticated %}
+        <aside class="sidebar no-print">
+            <ul class="sidebar-menu">
+                <li><a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">Accueil</a></li>
+
+                {% if user.student_profile %}
+                    <li><a href="{% url 'student_dashboard' %}" class="{% if 'student' in request.path %}active{% endif %}">Tableau de bord</a></li>
+                    <li><a href="{% url 'student_create_request' %}" class="{% if 'create' in request.path %}active{% endif %}">Nouvelle requête</a></li>
+                    <li><a href="{% url 'student_requests' %}" class="{% if 'requests' in request.path %}active{% endif %}">Mes requêtes</a></li>
+
+                {% elif user.lecturer_profile %}
+                    <li><a href="{% url 'staff_dashboard' %}" class="{% if 'staff' in request.path %}active{% endif %}">Tableau de bord</a></li>
+                    <li><a href="{% url 'staff_requests' %}" class="{% if 'requests' in request.path %}active{% endif %}">Requêtes assignées</a></li>
+
+                {% elif user.groups.all|length > 0 %}
+                    <li><a href="{% url 'cellule_dashboard' %}" class="{% if 'cellule' in request.path %}active{% endif %}">Tableau de bord</a></li>
+                    <li><a href="{% url 'cellule_requests' %}" class="{% if 'requests' in request.path %}active{% endif %}">Requêtes en cellule</a></li>
+
+                {% elif user.is_superuser %}
+                    <li><a href="/admin/">Tableau de bord</a></li>
+                    <li><a href="/admin/auth/user/">Gestion utilisateurs</a></li>
+                    <li><a href="/admin/requests_app/field/">Gestion filières</a></li>
+                    <li><a href="/admin/requests_app/classlevel/">Gestion niveaux</a></li>
+                    <li><a href="/admin/requests_app/subject/">Gestion matières</a></li>
+                    <li><a href="/api/schema/swagger-ui/" target="_blank">API Docs</a></li>
+                {% endif %}
+            </ul>
+        </aside>
+        {% endif %}
+
+        <!-- Main Content -->
+        <main class="main-content {% if not user.is_authenticated %}full-width{% endif %}">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- HTMX Config -->
+    <script>
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            // Scroll to top after HTMX swap
+            if (event.detail.target.id === 'main-content') {
+                window.scrollTo(0, 0);
+            }
+        });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

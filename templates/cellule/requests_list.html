@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Requêtes Cellule{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="flex flex-between items-center mb-3">
+        <h1>💻 Requêtes en cellule</h1>
+        <a href="/cellule/dashboard/" class="btn btn-secondary">← Dashboard</a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-2">
+        <form method="get" class="flex gap-2 items-center">
+            <div class="form-group" style="margin: 0; flex: 1;">
+                <select name="status" class="form-control form-select" onchange="this.form.submit()">
+                    <option value="">Tous les statuts</option>
+                    <option value="in_cellule" {% if status_filter == 'in_cellule' %}selected{% endif %}>En cellule</option>
+                    <option value="returned" {% if status_filter == 'returned' %}selected{% endif %}>Retournée</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin: 0; flex: 1;">
+                <select name="type" class="form-control form-select" onchange="this.form.submit()">
+                    <option value="">Tous les types</option>
+                    <option value="cc" {% if type_filter == 'cc' %}selected{% endif %}>CC</option>
+                    <option value="exam" {% if type_filter == 'exam' %}selected{% endif %}>EXAM</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-outline">Filtrer</button>
+            <a href="/cellule/requests/" class="btn btn-secondary">Réinitialiser</a>
+        </form>
+    </div>
+
+    <!-- Requests Table -->
+    <div class="card">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Étudiant</th>
+                        <th>Niveau</th>
+                        <th>Matière</th>
+                        <th>Type</th>
+                        <th>Statut</th>
+                        <th>Responsable</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests_list %}
+                    <tr class="clickable" onclick="window.location='/cellule/requests/{{ req.id }}/'">
+                        <td>
+                            <strong>{{ req.student_name }}</strong>
+                            <br>
+                            <small style="color: var(--text-secondary);">{{ req.matricule }}</small>
+                        </td>
+                        <td>{{ req.class_level.name }}</td>
+                        <td>{{ req.subject.name }}</td>
+                        <td>{{ req.get_type_display }}</td>
+                        <td><span class="badge badge-{{ req.status }}">{{ req.get_status_display }}</span></td>
+                        <td>{{ req.assigned_to.get_full_name }}</td>
+                        <td>{{ req.submitted_at|date:"d/m/Y H:i" }}</td>
+                        <td onclick="event.stopPropagation();">
+                            <a href="/cellule/requests/{{ req.id }}/" class="btn btn-sm btn-primary">Voir détails</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center" style="padding: 3rem; color: var(--text-secondary);">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                            <h3>Aucune requête trouvée</h3>
+                            <p>Aucune requête ne correspond à vos critères de recherche.</p>
+                            <a href="/cellule/requests/" class="btn btn-secondary mt-1">Réinitialiser les filtres</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if requests_list %}
+        <div class="card-footer">
+            <p style="margin: 0; color: var(--text-secondary);">
+                Total: <strong>{{ requests_list.count }}</strong> requête(s)
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Instructions -->
+    <div class="card mt-2">
+        <div class="card-header">
+            <h4 style="margin: 0; font-size: 1rem;">📖 Instructions</h4>
+        </div>
+        <div style="padding: 1rem;">
+            <p style="margin: 0 0 0.75rem 0;"><strong>Flux de traitement:</strong></p>
+            <ol style="margin: 0; padding-left: 1.5rem; color: var(--text-secondary); line-height: 1.6;">
+                <li>Les requêtes <strong>approuvées</strong> sont envoyées à la cellule par les responsables</li>
+                <li>Traitez la requête en modifiant la note dans le système</li>
+                <li>Retournez la requête au responsable une fois le traitement terminé</li>
+                <li>Le responsable marquera ensuite la requête comme <strong>terminée</strong></li>
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}Requête #{{ request_obj.id|truncatechars:8 }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="flex flex-between items-center mb-3 no-print">
+        <h1>💻 Détail de la requête</h1>
+        <div class="flex gap-2">
+            <button onclick="window.print()" class="btn btn-outline">🖨️ Imprimer</button>
+            <a href="/cellule/requests/" class="btn btn-secondary">← Retour</a>
+        </div>
+    </div>
+
+    <!-- Progress Map -->
+    {% include 'requests/progress_map.html' with request=request_obj %}
+
+    <!-- Action Button -->
+    {% if request_obj.status == 'in_cellule' %}
+    <div class="card mb-2 no-print">
+        <div class="card-header">
+            <h3 class="card-title">⚡ Action disponible</h3>
+        </div>
+        <div style="padding: 1.5rem;">
+            <a href="/cellule/requests/{{ request_obj.id }}/return/" class="btn btn-success btn-lg">
+                ↩️ Retourner au responsable
+            </a>
+            <p style="margin: 1rem 0 0 0; color: var(--text-secondary);">
+                Cliquez sur ce bouton après avoir traité la requête et modifié la note dans le système.
+            </p>
+        </div>
+    </div>
+    {% elif request_obj.status == 'returned' %}
+    <div class="alert alert-success no-print">
+        ✓ Cette requête a été retournée au responsable et est en attente de finalisation.
+    </div>
+    {% endif %}
+
+    <!-- Request Information -->
+    <div class="card mb-2">
+        <div class="card-header">
+            <h3 class="card-title">Informations de la requête</h3>
+            <span class="badge badge-{{ request_obj.status }}">{{ request_obj.get_status_display }}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; padding: 1.5rem;">
+            <div>
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Matricule</strong>
+                    <p style="margin: 0.25rem 0 0 0; font-size: 1.125rem;">{{ request_obj.matricule }}</p>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Étudiant</strong>
+                    <p style="margin: 0.25rem 0 0 0; font-size: 1.125rem;">{{ request_obj.student_name }}</p>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Niveau</strong>
+                    <p style="margin: 0.25rem 0 0 0;">{{ request_obj.class_level.name }}</p>
+                </div>
+                <div>
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Filière</strong>
+                    <p style="margin: 0.25rem 0 0 0;">{{ request_obj.field.name }}</p>
+                </div>
+            </div>
+            <div>
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Matière</strong>
+                    <p style="margin: 0.25rem 0 0 0; font-size: 1.125rem; color: var(--primary);">{{ request_obj.subject.name }}</p>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Type de requête</strong>
+                    <p style="margin: 0.25rem 0 0 0;">{{ request_obj.get_type_display }}</p>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Responsable</strong>
+                    <p style="margin: 0.25rem 0 0 0;">{{ request_obj.assigned_to.get_full_name }}</p>
+                </div>
+                <div>
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Date de soumission</strong>
+                    <p style="margin: 0.25rem 0 0 0;">{{ request_obj.submitted_at|date:"d/m/Y à H:i" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Description -->
+    <div class="card mb-2">
+        <div class="card-header">
+            <h3 class="card-title">Description de la demande</h3>
+        </div>
+        <div style="padding: 1.5rem;">
+            <p style="margin: 0; line-height: 1.6; white-space: pre-wrap;">{{ request_obj.description }}</p>
+        </div>
+    </div>
+
+    <!-- Audit Logs -->
+    {% if request_obj.audit_logs.exists %}
+    <div class="card mb-2">
+        <div class="card-header">
+            <h3 class="card-title">📜 Historique</h3>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Action</th>
+                        <th>Par</th>
+                        <th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in request_obj.audit_logs.all %}
+                    <tr>
+                        <td>{{ log.timestamp|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            {% if log.from_status %}
+                                <span class="badge badge-{{ log.from_status }}">{{ log.get_from_status_display }}</span>
+                                →
+                            {% endif %}
+                            <span class="badge badge-{{ log.to_status }}">{{ log.get_to_status_display }}</span>
+                        </td>
+                        <td>{{ log.actor.get_full_name }}</td>
+                        <td>{{ log.note|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Attachments -->
+    {% if request_obj.attachments.exists %}
+    <div class="card mb-2">
+        <div class="card-header">
+            <h3 class="card-title">📎 Pièces jointes</h3>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fichier</th>
+                        <th>Uploadé par</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attachment in request_obj.attachments.all %}
+                    <tr>
+                        <td>
+                            <strong>{{ attachment.file.name|slice:"9:" }}</strong>
+                            <br>
+                            <small style="color: var(--text-secondary);">{{ attachment.file_type }}</small>
+                        </td>
+                        <td>{{ attachment.uploaded_by.get_full_name }}</td>
+                        <td>{{ attachment.uploaded_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <a href="{{ attachment.file.url }}" target="_blank" class="btn btn-sm btn-outline">
+                                📥 Télécharger
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- QR Code Section -->
+    <div class="card text-center no-print">
+        <div class="card-header">
+            <h3 class="card-title">📱 Code QR</h3>
+        </div>
+        <div style="padding: 2rem;">
+            <img src="{{ qr_code }}" alt="QR Code de la requête" style="max-width: 250px; margin: 0 auto; border: 2px solid var(--border); border-radius: 8px; padding: 1rem; background: white;">
+            <p style="margin: 1.5rem 0 0 0; color: var(--text-secondary);">
+                Scannez ce code pour accéder à la requête
+            </p>
+        </div>
+    </div>
+
+    <!-- Print-only header -->
+    <div class="print-only" style="display: none;">
+        <div style="text-align: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border);">
+            <h1 style="margin: 0 0 0.5rem 0; color: var(--primary);">Système de Gestion des Requêtes</h1>
+            <p style="margin: 0; color: var(--text-secondary);">Requête #{{ request_obj.id }}</p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.875rem; color: var(--text-secondary);">
+                Imprimé le {{ "now"|date:"d/m/Y à H:i" }}
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        .print-only {
+            display: block !important;
+        }
+    }
+</style>
+{% endblock %}

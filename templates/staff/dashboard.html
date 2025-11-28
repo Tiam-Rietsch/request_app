@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Personnel{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="flex flex-between items-center mb-3">
+        <div>
+            <h1>👨‍🏫 Dashboard Personnel</h1>
+            <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">
+                Bienvenue, <strong>{{ request.user.get_full_name }}</strong>
+                {% if lecturer.is_hod %}
+                    <span class="badge badge-approved" style="margin-left: 0.5rem;">Chef de Département</span>
+                {% endif %}
+            </p>
+        </div>
+        <a href="{% url 'staff_requests' %}" class="btn btn-primary">Voir toutes les requêtes</a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 2.5rem; font-weight: 700;">{{ total_requests }}</h3>
+            <p style="margin: 0; opacity: 0.9; font-size: 1rem;">Total des requêtes</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 2.5rem; font-weight: 700;">{{ pending_requests }}</h3>
+            <p style="margin: 0; opacity: 0.9; font-size: 1rem;">En cours</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 2.5rem; font-weight: 700;">{{ completed_requests }}</h3>
+            <p style="margin: 0; opacity: 0.9; font-size: 1rem;">Terminées</p>
+        </div>
+    </div>
+
+    <!-- Quick Stats by Status -->
+    {% if status_stats %}
+    <div class="card mb-2">
+        <div class="card-header">
+            <h3 class="card-title">📊 Répartition par statut</h3>
+        </div>
+        <div style="padding: 1.5rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                {% for stat in status_stats %}
+                <div style="text-align: center; padding: 1rem; background: var(--background); border-radius: 8px;">
+                    <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary);">{{ stat.count }}</div>
+                    <div style="margin-top: 0.25rem;">
+                        <span class="badge badge-{{ stat.status }}">{{ stat.get_status_display|default:stat.status }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Requests -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">📋 Requêtes récentes</h3>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Étudiant</th>
+                        <th>Matière</th>
+                        <th>Type</th>
+                        <th>Statut</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in recent_requests %}
+                    <tr class="clickable" onclick="window.location='/staff/requests/{{ req.id }}/'">
+                        <td>
+                            <strong>{{ req.student_name }}</strong>
+                            <br>
+                            <small style="color: var(--text-secondary);">{{ req.matricule }}</small>
+                        </td>
+                        <td>{{ req.subject.name }}</td>
+                        <td>{{ req.get_type_display }}</td>
+                        <td><span class="badge badge-{{ req.status }}">{{ req.get_status_display }}</span></td>
+                        <td>{{ req.submitted_at|date:"d/m/Y H:i" }}</td>
+                        <td onclick="event.stopPropagation();">
+                            <a href="/staff/requests/{{ req.id }}/" class="btn btn-sm btn-primary">Voir</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center" style="padding: 3rem; color: var(--text-secondary);">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                            <h3>Aucune requête</h3>
+                            <p>Vous n'avez pas encore de requête assignée.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem;">
+        <div class="card">
+            <div class="card-header">
+                <h4 style="margin: 0;">📚 Mes matières</h4>
+            </div>
+            <div style="padding: 1rem;">
+                <ul style="margin: 0; padding: 0; list-style: none;">
+                    {% for subject in lecturer.subjects.all %}
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                        {{ subject.name }}
+                        <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                            ({{ subject.class_level.name }} - {{ subject.field.name }})
+                        </span>
+                    </li>
+                    {% empty %}
+                    <li style="padding: 1rem; text-align: center; color: var(--text-secondary);">
+                        Aucune matière assignée
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 style="margin: 0;">ℹ️ Informations</h4>
+            </div>
+            <div style="padding: 1rem;">
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Filière</strong>
+                    <p style="margin: 0.25rem 0 0 0;">{{ lecturer.field.name }}</p>
+                </div>
+                {% if lecturer.is_hod %}
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: var(--text-secondary); font-size: 0.875rem;">Rôle</strong>
+                    <p style="margin: 0.25rem 0 0 0;">
+                        <span class="badge badge-approved">Chef de Département</span>
+                    </p>
+                </div>
+                <div class="alert alert-info" style="margin-top: 1rem;">
+                    <strong>En tant que HOD:</strong> Vous recevez toutes les requêtes de type <strong>EXAM</strong> pour votre filière.
+                </div>
+                {% else %}
+                <div class="alert alert-info" style="margin-top: 1rem;">
+                    <strong>En tant qu'enseignant:</strong> Vous recevez les requêtes de type <strong>CC</strong> pour vos matières.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
