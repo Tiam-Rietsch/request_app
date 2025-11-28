@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m venv:*)",
+      "Bash(.venvScriptsactivate)",
+      "Bash(python -m pip install:*)",
+      "Bash(venvScriptspython.exe -m pip install --upgrade pip)",
+      "Bash(cmd //c \"venv\\Scripts\\activate.bat && pip install --upgrade pip && pip install -r requirements.txt\")",
+      "Bash(cmd //c \"venv\\Scripts\\activate.bat && pip install Django djangorestframework drf-spectacular django-cors-headers Pillow python-magic-bin django-filter\")",
+      "Bash(cmd //c \"venv\\Scripts\\activate.bat && django-admin startproject requests_system .\")",
+      "Bash(cmd //c \"venv\\Scripts\\activate.bat && python manage.py startapp requests_app\")",
+      "Bash(cmd //c \"venv\\Scripts\\activate.bat && python manage.py makemigrations\")",
+      "Bash(cmd //c \"venv\\Scripts\\activate.bat && python manage.py migrate\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
