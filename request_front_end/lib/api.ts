@@ -307,6 +307,12 @@ export const requestsAPI = {
     });
   },
 
+  async close(id: string) {
+    return request<any>(`/api/requests/${id}/close/`, {
+      method: 'POST',
+    });
+  },
+
   async uploadAttachment(id: string, file: File) {
     const formData = new FormData();
     formData.append('file', file);

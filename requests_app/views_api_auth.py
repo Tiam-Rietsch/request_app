@@ -17,6 +17,8 @@ def get_user_role(user):
         return 'student'
     if hasattr(user, 'lecturer_profile'):
         lecturer = user.lecturer_profile
+        # Keep lecturer/hod role even if cellule_informatique is True
+        # The flag is checked separately for IT cell access
         if lecturer.is_hod:
             return 'hod'
         return 'lecturer'
@@ -79,6 +81,7 @@ def api_login(request):
             user_data['lecturer_profile'] = {
                 'id': lecturer.id,
                 'is_hod': lecturer.is_hod,
+                'cellule_informatique': lecturer.cellule_informatique,  # Add this field!
                 'field': lecturer.field.id if lecturer.field else None,
                 'field_name': lecturer.field.name if lecturer.field else None,
             }

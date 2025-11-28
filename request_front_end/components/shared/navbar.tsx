@@ -12,8 +12,11 @@ interface NavbarProps {
 }
 
 export function Navbar({ userName = "User", userRole = "student", onToggleSidebar }: NavbarProps) {
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
+  
+  // Check if user is member of cellule informatique
+  const isCelluleMember = user?.lecturer_profile?.cellule_informatique === true
 
   const handleLogout = async () => {
     await logout()
@@ -77,10 +80,19 @@ export function Navbar({ userName = "User", userRole = "student", onToggleSideba
 
           <div className="hidden sm:flex items-center gap-3 pl-3 border-l border-border">
             <div className="text-right">
-              <p className="text-sm font-medium">{userName}</p>
-              <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${getRoleBadgeColor()}`}>
-                {getRoleLabel()}
-              </span>
+              <p className="text-sm font-medium">
+                {user ? `${user.first_name} ${user.last_name}`.trim() || user.username : userName}
+              </p>
+              <div className="flex items-center gap-2 justify-end">
+                <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${getRoleBadgeColor()}`}>
+                  {getRoleLabel()}
+                </span>
+                {isCelluleMember && (
+                  <span className="inline-block text-xs px-2 py-1 rounded-full font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                    Cellule Informatique
+                  </span>
+                )}
+              </div>
             </div>
             <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
               <User className="h-5 w-5 text-muted-foreground" />

@@ -4,190 +4,350 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ProgressMap } from "@/components/shared/progress-map"
 import { LayoutWrapper } from "@/components/shared/layout-wrapper"
-import { ArrowLeft, Clock, User, BookOpen, Tag, Send, CheckCircle } from "lucide-react"
+import { ArrowLeft, Clock, User, BookOpen, Tag, FileText, Download, Printer, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useAuth, useRequireAuth } from "@/lib/auth-context"
+import { requestsAPI } from "@/lib/api"
+import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
+import { toast } from "sonner"
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+const getStatusColor = (status: string) => {
+  const colors: { [key: string]: string } = {
+    sent: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    received: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+    approved: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+    rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    in_cellule: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    returned: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+    done: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300",
+  }
+  return colors[status] || colors.sent
+}
+
+const getProgressStep = (status: string) => {
+  const steps: { [key: string]: number } = {
+    sent: 0,
+    received: 1,
+    approved: 2,
+    in_cellule: 3,
+    returned: 4,
+    done: 5,
+  }
+  return steps[status] || 0
+}
 
 export default function ITCellRequestDetailPage() {
-  const [isUpdated, setIsUpdated] = useState(false)
-  const status = "in_cellule"
+  useRequireAuth(['cellule', 'lecturer', 'hod']) // Allow lecturers with cellule_informatique flag
+  const { user, loading: authLoading } = useAuth()
+  const params = useParams()
+  const requestId = params?.id as string
+  
+  const [request, setRequest] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  const request = {
-    id: "REQ-2024-001",
-    student: "John Doe",
-    matricule: "MT001234",
-    subject: "Advanced Algorithms",
-    type: "EXAM",
-    status: "in_cellule",
-    approvedDate: "Nov 18, 2024",
+  useEffect(() => {
+    if (!authLoading && user && requestId) {
+      fetchRequest()
+    }
+  }, [authLoading, user, requestId])
+
+  const fetchRequest = async () => {
+    try {
+      const data = await requestsAPI.get(requestId)
+      setRequest(data)
+    } catch (error: any) {
+      console.error("Failed to fetch request:", error)
+      setError(error.message || "Erreur lors du chargement de la requête")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const response = {
-    newScore: "20",
-    oldScore: "12",
-    reason: "The contestation is valid. The student's solution is correct and matches the specifications.",
-    staffName: "Prof. Smith",
+  const handleMarkAsReturned = async () => {
+    setSubmitting(true)
+    try {
+      await requestsAPI.returnFromCellule(requestId)
+      toast.success("Requête marquée comme retournée")
+      await fetchRequest()
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || "Erreur lors du retour")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  return (
-    <LayoutWrapper role="cellule" userName="IT Cell Admin" userRole="cellule">
-      <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
+  const handlePrint = () => {
+    window.open(`${API_BASE_URL}/api/requests/${requestId}/print/`, '_blank')
+  }
+
+  const getProgressMapData = (currentStatus: string) => {
+    const statusOrder = ["sent", "received", "approved", "in_cellule", "returned", "done"]
+    const steps = [
+      "Envoyée",
+      "Reçue",
+      "Approuvée",
+      "En cellule",
+      "Retournée",
+      "Terminée",
+    ]
+    const currentStepIndex = statusOrder.indexOf(currentStatus)
+
+    const statuses: { [key: number]: "completed" | "current" | "pending" } = {}
+    for (let i = 0; i < steps.length; i++) {
+      if (i < currentStepIndex) {
+        statuses[i] = "completed"
+      } else if (i === currentStepIndex) {
+        statuses[i] = "current"
+      } else {
+        statuses[i] = "pending"
+      }
+    }
+    return { steps, currentStep: currentStepIndex, statuses }
+  }
+
+  if (authLoading || loading) {
+    return (
+      <LayoutWrapper role="cellule" userName="..." userRole="cellule">
+        <div className="p-3 sm:p-4 max-w-7xl mx-auto">
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Chargement...</p>
+          </div>
+        </div>
+      </LayoutWrapper>
+    )
+  }
+
+  if (error || !request) {
+    return (
+      <LayoutWrapper role="cellule" userName={user ? `${user.first_name} ${user.last_name}` : "Cellule"} userRole="cellule">
+        <div className="p-3 sm:p-4 max-w-7xl mx-auto">
           <Link href="/cellule/requests" className="inline-flex items-center gap-2 text-primary hover:underline mb-4">
             <ArrowLeft className="h-4 w-4" />
-            Back
+            Retour
           </Link>
-          <h1 className="text-3xl font-bold">Request Details</h1>
+          <Card className="p-6">
+            <p className="text-destructive">{error || "Requête introuvable"}</p>
+          </Card>
+        </div>
+      </LayoutWrapper>
+    )
+  }
+
+  const progressMapProps = getProgressMapData(request.status)
+
+  return (
+    <LayoutWrapper role="cellule" userName={user ? `${user.first_name} ${user.last_name}` : "Cellule"} userRole="cellule">
+      <div className="p-3 sm:p-4 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link href="/cellule/requests" className="inline-flex items-center gap-2 text-primary hover:underline">
+            <ArrowLeft className="h-4 w-4" />
+            Retour
+          </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrint}
+            className="gap-2"
+          >
+            <Printer className="h-4 w-4" />
+            Imprimer
+          </Button>
         </div>
 
-        {/* Progress Map */}
-        <Card className="p-6 mb-8">
-          <h2 className="font-semibold mb-6">Request Progress</h2>
-          <ProgressMap
-            steps={["Sent", "Received", "Decision", "IT Processing", "Returned", "Done"]}
-            currentStep={3}
-            statuses={{
-              0: "completed",
-              1: "completed",
-              2: "completed",
-              3: "current",
-              4: "pending",
-              5: "pending",
-            }}
-          />
-        </Card>
-
-        {/* Request Information */}
-        <Card className="p-6 mb-8 border-2 border-blue-200 dark:border-blue-800">
-          <h2 className="text-xl font-semibold mb-6 text-blue-900 dark:text-blue-100">Request Block</h2>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            <div className="flex gap-3">
-              <Tag className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-              <div>
-                <p className="text-sm text-muted-foreground">Request ID</p>
-                <p className="font-semibold">{request.id}</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <User className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-              <div>
-                <p className="text-sm text-muted-foreground">Student</p>
-                <p className="font-semibold">
-                  {request.student} ({request.matricule})
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <BookOpen className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-              <div>
-                <p className="text-sm text-muted-foreground">Subject</p>
-                <p className="font-semibold">{request.subject}</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Clock className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-              <div>
-                <p className="text-sm text-muted-foreground">Approved Date</p>
-                <p className="font-semibold">{request.approvedDate}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-border mt-6 pt-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Request Type</p>
-                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-sm font-medium">
-                  {request.type}
-                </span>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Status</p>
-                <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-full text-sm font-medium">
-                  {request.status}
-                </span>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Response Information */}
-        <Card className="p-6 mb-8 border-2 border-green-200 dark:border-green-800">
-          <h2 className="text-xl font-semibold mb-6 text-green-900 dark:text-green-100">
-            Response Block (Staff Decision)
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Score Update</p>
-              <p className="font-semibold text-lg">
-                {response.oldScore} → {response.newScore}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Reviewed by</p>
-              <p className="font-semibold">{response.staffName}</p>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-sm text-muted-foreground mb-2">Staff Reason</p>
-            <p className="text-foreground p-4 bg-secondary rounded-lg">{response.reason}</p>
-          </div>
-        </Card>
-
-        {/* Action Buttons */}
-        {status === "in_cellule" && !isUpdated && (
-          <div className="mb-8">
-            <Button className="w-full gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => setIsUpdated(true)}>
-              <Send className="h-4 w-4" />
-              Mark as Updated
-            </Button>
-          </div>
-        )}
-
-        {isUpdated && (
-          <Card className="p-6 mb-8 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-              <p className="text-green-800 dark:text-green-300">Request marked as updated successfully.</p>
-            </div>
-          </Card>
-        )}
-
-        {/* Description */}
-        <Card className="p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Request Details</h2>
-          <p className="text-muted-foreground mb-4">
-            <strong>Student's Reason:</strong> I believe my exam answer for question 3 was incorrectly marked. The
-            solution follows the algorithm specification and should receive full marks.
-          </p>
-        </Card>
-
-        {/* Timeline */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-6">Timeline</h2>
-          <div className="space-y-4">
-            {[
-              { time: "Nov 20, 2:30 PM", action: "Sent to IT Cell", by: "Prof. Smith" },
-              { time: "Nov 18, 10:15 AM", action: "Decision Made (Approved)", by: "Prof. Smith" },
-              { time: "Nov 16, 3:45 PM", action: "Request Received", by: "Prof. Smith" },
-              { time: "Nov 15, 9:00 AM", action: "Request Submitted", by: "John Doe" },
-            ].map((log, index) => (
-              <div key={index} className="flex gap-4 pb-4 border-b border-border last:border-0 last:pb-0">
-                <div className="w-20 flex-shrink-0">
-                  <p className="text-sm font-medium text-muted-foreground">{log.time}</p>
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">{log.action}</p>
-                  <p className="text-sm text-muted-foreground">By: {log.by}</p>
+        {/* Grid Layout: Main Content (2/3) + Historique (1/3) */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Main Content Column */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* REQUEST BLOCK with Progress Map */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Bloc Requête</h2>
+                <div className="flex-shrink-0">
+                  <ProgressMap
+                    steps={progressMapProps.steps}
+                    currentStep={progressMapProps.currentStep}
+                    statuses={progressMapProps.statuses}
+                  />
                 </div>
               </div>
-            ))}
+
+              <div className="grid md:grid-cols-2 gap-6 mb-6">
+                <div className="flex gap-3">
+                  <Tag className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">ID Requête</p>
+                    <p className="font-medium font-mono text-xs">{request.id}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <User className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Étudiant</p>
+                    <p className="font-medium text-sm">{request.student_name}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Matière</p>
+                    <p className="font-medium text-sm">{request.subject_display}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Soumise le</p>
+                    <p className="font-medium text-sm">
+                      {format(new Date(request.submitted_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-6">
+                <div className="grid grid-cols-3 gap-6 mb-6">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Type de requête</p>
+                    <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-xs font-medium">
+                      {request.type_display}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Note actuelle</p>
+                    <p className="text-sm font-semibold">{request.current_score || "0"}/20</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Statut</p>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                      {request.status_display}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Description</p>
+                  <p className="text-sm text-foreground p-4 bg-secondary rounded-lg whitespace-pre-wrap">
+                    {request.description}
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Result Block - Below request form */}
+            {request.result && (
+              <Card className="p-6 border-2 border-green-200 dark:border-green-800">
+                <h2 className="text-xl font-semibold mb-4">Résultat de la Requête</h2>
+                <div className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Décision</p>
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                        request.result.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {request.result.status === 'accepted' ? 'Acceptée' : 'Rejetée'}
+                      </span>
+                    </div>
+                    {request.result.new_score !== null && request.result.new_score !== undefined && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Nouvelle note</p>
+                        <p className="text-2xl font-bold text-green-600">{request.result.new_score}/20</p>
+                      </div>
+                    )}
+                  </div>
+                  {request.result.reason && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Description</p>
+                      <p className="text-sm p-4 bg-secondary rounded-lg whitespace-pre-wrap">{request.result.reason}</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* Attachments */}
+            {request.attachments && request.attachments.length > 0 && (
+              <Card className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Pièces jointes</h2>
+                <div className="space-y-3">
+                  {request.attachments.map((attachment: any) => (
+                    <div key={attachment.id} className="flex items-center justify-between p-4 bg-secondary rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm font-medium">{attachment.filename || "Fichier"}</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(`${API_BASE_URL}${attachment.file}`, '_blank')}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Télécharger
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* Action Button - Mark as Returned */}
+            {request.status === 'in_cellule' && (
+              <Button
+                className="w-full gap-2 bg-purple-600 hover:bg-purple-700"
+                onClick={handleMarkAsReturned}
+                disabled={submitting}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {submitting ? "Traitement..." : "Marquer comme mis à jour"}
+              </Button>
+            )}
           </div>
-        </Card>
+
+          {/* Historique Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="p-4 sticky top-4 max-h-[600px] overflow-y-auto">
+              <h2 className="text-lg font-semibold mb-4">Historique</h2>
+              {request.logs && request.logs.length > 0 ? (
+                <div className="space-y-3">
+                  {[...request.logs].reverse().map((log: any, index: number) => {
+                    // Extract new score from log note if present
+                    const note = log.note || log.action || ''
+                    const newScoreMatch = note.match(/Nouvelle note[:\s]+([0-9.]+)/i)
+                    const newScore = newScoreMatch ? newScoreMatch[1] : null
+                    
+                    return (
+                      <div key={index} className="pb-3 border-b border-border last:border-0 last:pb-0">
+                        <p className="text-xs text-muted-foreground mb-1">
+                          {format(new Date(log.timestamp), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                        </p>
+                        {newScore ? (
+                          <div>
+                            <p className="text-base font-bold mb-1">Nouvelle note: {newScore}/20</p>
+                            <p className="text-sm text-muted-foreground">{note.replace(/\(?Nouvelle note[:\s]+[0-9.]+\)?/i, '').trim() || log.action}</p>
+                          </div>
+                        ) : (
+                          <p className="text-sm font-medium">{note}</p>
+                        )}
+                        {log.actor_name && (
+                          <p className="text-xs text-muted-foreground mt-1">Par: {log.actor_name}</p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucun historique disponible</p>
+              )}
+            </Card>
+          </div>
+        </div>
       </div>
     </LayoutWrapper>
   )

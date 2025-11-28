@@ -23,10 +23,24 @@ export function Sidebar({ role = "public", isOpen = true, onClose }: SidebarProp
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/")
 
   const hasCelluleAccess = () => {
-    return user?.lecturer_profile?.cellule_informatique === true
+    // Check cellule_informatique flag - this takes priority over role
+    if (!user) return false
+    return user.lecturer_profile?.cellule_informatique === true
   }
 
   const getMenuItems = () => {
+    // Check cellule_informatique FIRST (above staff)
+    const isCelluleMember = hasCelluleAccess()
+    
+    if (isCelluleMember) {
+      // If user is cellule member, show cellule menu items
+      return [
+        { href: "/staff/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/staff/requests", label: "Assigned Requests", icon: FileText },
+        { href: "/staff/cellule-requests", label: "Cellule Informatique", icon: Server },
+      ]
+    }
+    
     switch (role) {
       case "student":
         return [
@@ -35,15 +49,10 @@ export function Sidebar({ role = "public", isOpen = true, onClose }: SidebarProp
           { href: "/student/requests", label: "My Requests", icon: FileText },
         ]
       case "staff":
-        const items = [
+        return [
           { href: "/staff/dashboard", label: "Dashboard", icon: LayoutDashboard },
           { href: "/staff/requests", label: "Assigned Requests", icon: FileText },
         ]
-        // Add IT cell option if user has cellule_informatique access
-        if (hasCelluleAccess()) {
-          items.push({ href: "/staff/cellule-requests", label: "Cellule Informatique", icon: Server })
-        }
-        return items
       case "cellule":
         return [
           { href: "/cellule/dashboard", label: "Dashboard", icon: LayoutDashboard },

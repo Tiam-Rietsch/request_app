@@ -30,9 +30,18 @@ class IsHOD(BasePermission):
 class IsCellule(BasePermission):
     """
     Permission pour vérifier si l'utilisateur fait partie de la cellule informatique
+    (via groupe ou flag cellule_informatique sur lecturer_profile)
     """
     def has_permission(self, request, view):
-        return request.user.groups.filter(name='cellule_informatique').exists() or request.user.is_superuser
+        if request.user.is_superuser:
+            return True
+        # Check via group
+        if request.user.groups.filter(name='cellule_informatique').exists():
+            return True
+        # Check via lecturer flag
+        if hasattr(request.user, 'lecturer_profile'):
+            return request.user.lecturer_profile.cellule_informatique
+        return False
 
 
 class IsSuperAdmin(BasePermission):
@@ -94,8 +103,10 @@ class IsRequestOwnerOrAssigned(BasePermission):
             if obj.assigned_to == request.user:
                 return True
 
-        # Cellule peut voir les requêtes in_cellule
+        # Cellule peut voir les requêtes in_cellule (via group or lecturer flag)
         if request.user.groups.filter(name='cellule_informatique').exists():
+            return obj.status == 'in_cellule'
+        if hasattr(request.user, 'lecturer_profile') and request.user.lecturer_profile.cellule_informatique:
             return obj.status == 'in_cellule'
 
         return False
@@ -170,8 +181,10 @@ class CanUploadAttachment(BasePermission):
         if obj.assigned_to == request.user:
             return True
 
-        # Cellule peut uploader si in_cellule
+        # Cellule peut uploader si in_cellule (via group or lecturer flag)
         if request.user.groups.filter(name='cellule_informatique').exists():
+            return obj.status == 'in_cellule'
+        if hasattr(request.user, 'lecturer_profile') and request.user.lecturer_profile.cellule_informatique:
             return obj.status == 'in_cellule'
 
         return False

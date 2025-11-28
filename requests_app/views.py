@@ -192,9 +192,16 @@ class RequestViewSet(viewsets.ModelViewSet):
         if hasattr(user, 'student_profile'):
             return queryset.filter(student=user.student_profile)
 
-        # Cellule: voir seulement les requêtes in_cellule
+        # Cellule: voir les requêtes in_cellule, returned ET done
+        # Check via group or lecturer flag
+        is_cellule = False
         if user.groups.filter(name='cellule_informatique').exists():
-            return queryset.filter(status='in_cellule')
+            is_cellule = True
+        elif hasattr(user, 'lecturer_profile') and user.lecturer_profile.cellule_informatique:
+            is_cellule = True
+        
+        if is_cellule:
+            return queryset.filter(status__in=['in_cellule', 'returned', 'done'])
 
         # Enseignant/HOD: voir les requêtes assignées ou de sa filière
         if hasattr(user, 'lecturer_profile'):
@@ -508,6 +515,90 @@ class RequestViewSet(viewsets.ModelViewSet):
                 user=req.student.user,
                 title="Requête finalisée",
                 body=f"Votre requête pour {req.subject.name} a été finalisée: {result.get_status_display()}",
+                link=f"/requests/{req.id}/"
+            )
+
+        result_serializer = self.get_serializer(req)
+        return Response(result_serializer.data)
+
+    @extend_schema(
+        description="Fermer la requête (changer le statut à done)",
+        request=None,
+        responses={200: RequestSerializer}
+    )
+    @action(detail=True, methods=['post'], permission_classes=[IsAssignedStaff])
+    def close(self, request, pk=None):
+        """
+        Transition: returned -> done (crée RequestResult si pas déjà créé)
+        """
+        req = self.get_object()
+
+        if req.status != 'returned':
+            return Response(
+                {'detail': f'Cette action n\'est possible que pour une requête au statut "returned"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        with transaction.atomic():
+            old_status = req.status
+            
+            # Créer RequestResult si pas déjà créé (utilise les données de la décision précédente)
+            if not RequestResult.objects.filter(request=req).exists():
+                # Récupérer la dernière décision (approved/rejected) depuis les logs
+                last_decision_log = AuditLog.objects.filter(
+                    request=req,
+                    action__in=['decision_approved', 'decision_rejected']
+                ).order_by('-timestamp').first()
+                
+                result_status = 'accepted'  # Default
+                result_reason = ''
+                result_new_score = None
+                
+                if last_decision_log:
+                    if 'rejected' in last_decision_log.action:
+                        result_status = 'rejected'
+                    result_reason = last_decision_log.note or ''
+                    # Extraire new_score si présent dans le log
+                    if 'Nouvelle note' in result_reason:
+                        import re
+                        score_match = re.search(r'Nouvelle note[:\s]+([0-9.]+)', result_reason)
+                        if score_match:
+                            try:
+                                result_new_score = float(score_match.group(1))
+                            except:
+                                pass
+                
+                # Utiliser current_score comme new_score si disponible
+                if result_new_score is None and req.current_score:
+                    result_new_score = float(req.current_score)
+                
+                RequestResult.objects.create(
+                    request=req,
+                    status=result_status,
+                    new_score=result_new_score,
+                    reason=result_reason or "Requête fermée",
+                    created_by=request.user
+                )
+            
+            req.status = 'done'
+            req.closed_at = timezone.now()
+            req.save()
+
+            # Log
+            AuditLog.objects.create(
+                request=req,
+                action='close',
+                from_status=old_status,
+                to_status='done',
+                actor=request.user,
+                note="Requête fermée"
+            )
+
+            # Notification à l'étudiant
+            Notification.objects.create(
+                user=req.student.user,
+                title="Requête fermée",
+                body=f"Votre requête pour {req.subject.name} a été fermée",
                 link=f"/requests/{req.id}/"
             )
 

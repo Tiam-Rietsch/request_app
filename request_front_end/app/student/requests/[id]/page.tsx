@@ -237,69 +237,68 @@ export default function StudentRequestDetailPage() {
               <Card className="p-4 sticky top-4">
                 <h2 className="text-lg font-semibold mb-4">Historique</h2>
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {request.logs.map((log: any, index: number) => (
-                    <div key={log.id || index} className="pb-3 border-b border-border last:border-0 last:pb-0">
-                      <div className="text-xs text-muted-foreground mb-1">
-                        {format(new Date(log.timestamp), 'dd MMM, HH:mm', { locale: fr })}
+                  {[...request.logs].reverse().map((log: any, index: number) => {
+                    // Extract new score from log note if present
+                    const note = log.note || log.action || ''
+                    const newScoreMatch = note.match(/Nouvelle note[:\s]+([0-9.]+)/i)
+                    const newScore = newScoreMatch ? newScoreMatch[1] : null
+                    
+                    return (
+                      <div key={log.id || index} className="pb-3 border-b border-border last:border-0 last:pb-0">
+                        <div className="text-xs text-muted-foreground mb-1">
+                          {format(new Date(log.timestamp), 'dd MMM, HH:mm', { locale: fr })}
+                        </div>
+                        {newScore ? (
+                          <div>
+                            <p className="text-base font-bold mb-1">Nouvelle note: {newScore}/20</p>
+                            <p className="text-sm text-muted-foreground">{note.replace(/\(?Nouvelle note[:\s]+[0-9.]+\)?/i, '').trim() || log.action}</p>
+                          </div>
+                        ) : (
+                          <p className="text-sm font-medium">{note}</p>
+                        )}
+                        {log.actor_name && (
+                          <p className="text-xs text-muted-foreground mt-1">Par: {log.actor_name}</p>
+                        )}
                       </div>
-                      <p className="text-sm font-medium">{log.note || log.action}</p>
-                      {log.actor_name && (
-                        <p className="text-xs text-muted-foreground mt-1">Par: {log.actor_name}</p>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </Card>
             )}
           </div>
         </div>
 
-        {/* RESPONSE BLOCK */}
+        {/* Result Block - Below request form */}
         {request.result && (
           <Card className="p-6 mb-8 border-2 border-green-200 dark:border-green-800">
-            <h2 className="text-xl font-semibold mb-6 text-green-900 dark:text-green-100">Bloc Résultat</h2>
-
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Décision</p>
-                <span
-                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                    request.result.status === "accepted"
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                  }`}
-                >
-                  {request.result.status_display}
-                </span>
-              </div>
-              {request.result.new_score && (
+            <h2 className="text-xl font-semibold mb-4">Résultat de la Requête</h2>
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">Nouvelle Note</p>
-                  <p className="font-semibold text-2xl">{request.result.new_score}</p>
+                  <p className="text-sm text-muted-foreground mb-1">Décision</p>
+                  <span
+                    className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                      request.result.status === "accepted"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    }`}
+                  >
+                    {request.result.status_display}
+                  </span>
+                </div>
+                {request.result.new_score !== null && request.result.new_score !== undefined && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Nouvelle note</p>
+                    <p className="text-2xl font-bold text-green-600">{request.result.new_score}/20</p>
+                  </div>
+                )}
+              </div>
+              {request.result.reason && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Description</p>
+                  <p className="text-sm p-4 bg-secondary rounded-lg whitespace-pre-wrap">{request.result.reason}</p>
                 </div>
               )}
-            </div>
-
-            {request.result.reason && (
-              <div className="border-t border-border pt-6 mb-6">
-                <p className="text-sm text-muted-foreground mb-2">Raison</p>
-                <p className="text-foreground p-4 bg-secondary rounded-lg whitespace-pre-wrap">{request.result.reason}</p>
-              </div>
-            )}
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {request.result.created_by_name && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Traité par</p>
-                  <p className="font-semibold">{request.result.created_by_name}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-sm text-muted-foreground">Date de décision</p>
-                <p className="font-semibold">
-                  {format(new Date(request.result.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                </p>
-              </div>
             </div>
           </Card>
         )}

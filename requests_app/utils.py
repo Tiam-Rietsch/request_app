@@ -118,9 +118,11 @@ def can_user_action_request(user, request_obj, action):
                 request_obj.status == 'approved')
 
     elif action == 'return_from_cellule':
-        # Cellule peut retourner si status=in_cellule
-        return (user.groups.filter(name='cellule_informatique').exists() and
-                request_obj.status == 'in_cellule')
+        # Cellule peut retourner si status=in_cellule (via group or lecturer flag)
+        is_cellule = user.groups.filter(name='cellule_informatique').exists()
+        if not is_cellule and hasattr(user, 'lecturer_profile'):
+            is_cellule = user.lecturer_profile.cellule_informatique
+        return is_cellule and request_obj.status == 'in_cellule'
 
     elif action == 'complete':
         # Peut finaliser si assigné et status in [returned, approved]

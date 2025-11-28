@@ -13,7 +13,7 @@ import { format, startOfMonth, subMonths } from "date-fns"
 import { fr } from "date-fns/locale"
 
 export default function ITCellDashboard() {
-  useRequireAuth(['cellule'])
+  useRequireAuth(['cellule', 'lecturer', 'hod']) // Allow lecturers with cellule_informatique flag
   const { user, loading: authLoading } = useAuth()
   const [requests, setRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
