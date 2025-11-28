@@ -6,10 +6,36 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { LayoutWrapper } from "@/components/shared/layout-wrapper"
 import { useState } from "react"
+import { useAuth } from "@/lib/auth-context"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export default function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const { login } = useAuth()
+  const router = useRouter()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!username || !password) {
+      toast.error("Veuillez remplir tous les champs")
+      return
+    }
+
+    setLoading(true)
+    try {
+      await login(username, password)
+      toast.success("Connexion réussie!")
+      // Router will be handled by the auth context
+    } catch (error: any) {
+      toast.error(error.message || "Nom d'utilisateur ou mot de passe incorrect")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <LayoutWrapper hideNav>
@@ -19,88 +45,46 @@ export default function LoginPage() {
             <div className="h-12 w-12 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl mx-auto mb-4">
               GC
             </div>
-            <h1 className="text-2xl font-bold mb-2">Welcome Back</h1>
-            <p className="text-muted-foreground">Sign in to your account to continue</p>
+            <h1 className="text-2xl font-bold mb-2">Bienvenue</h1>
+            <p className="text-muted-foreground">Connectez-vous à votre compte</p>
           </div>
 
-          {/* Test Accounts Info */}
-          <div className="bg-secondary p-4 rounded-lg mb-6 text-sm">
-            <p className="font-semibold mb-2">Test Accounts:</p>
-            <div className="space-y-1 text-muted-foreground">
-              <p>👨‍🎓 Student: student@example.com / password</p>
-              <p>👨‍🏫 Staff: staff@example.com / password</p>
-              <p>💻 IT Cell: itcell@example.com / password</p>
-            </div>
-          </div>
-
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-sm font-medium mb-1">Username</label>
+              <label className="block text-sm font-medium mb-1">Nom d'utilisateur</label>
               <Input
                 type="text"
-                placeholder="Enter your username or matricule"
+                placeholder="Entrez votre matricule"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                disabled={loading}
+                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
+              <label className="block text-sm font-medium mb-1">Mot de passe</label>
               <Input
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Entrez votre mot de passe"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                required
               />
             </div>
             <Button
+              type="submit"
               className="w-full"
-              onClick={(e) => {
-                e.preventDefault()
-                // Route based on test account
-                if (username.includes("student")) {
-                  window.location.href = "/student/dashboard"
-                } else if (username.includes("staff")) {
-                  window.location.href = "/staff/dashboard"
-                } else if (username.includes("cellule") || username.includes("it")) {
-                  window.location.href = "/cellule/dashboard"
-                }
-              }}
+              disabled={loading}
             >
-              Sign In
+              {loading ? "Connexion..." : "Se connecter"}
             </Button>
           </form>
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-card text-muted-foreground">Or continue as</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <Link href="/student/dashboard">
-              <Button variant="outline" className="w-full bg-transparent" size="sm">
-                👨‍🎓
-              </Button>
-            </Link>
-            <Link href="/staff/dashboard">
-              <Button variant="outline" className="w-full bg-transparent" size="sm">
-                👨‍🏫
-              </Button>
-            </Link>
-            <Link href="/cellule/dashboard">
-              <Button variant="outline" className="w-full bg-transparent" size="sm">
-                💻
-              </Button>
-            </Link>
-          </div>
-
           <p className="text-center text-sm text-muted-foreground mt-6">
-            Don't have an account?{" "}
+            Vous n'avez pas de compte?{" "}
             <Link href="/signup" className="text-primary font-semibold hover:underline">
-              Sign up
+              S'inscrire
             </Link>
           </p>
         </Card>

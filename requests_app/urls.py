@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from . import views_auth
+from . import views_api_auth
 from . import views_student
 from . import views_staff
 from . import views_cellule
@@ -21,8 +22,14 @@ router.register(r'notifications', views.NotificationViewSet, basename='notificat
 urlpatterns = [
     # API endpoints
     path('api/', include(router.urls)),
+    
+    # API Authentication endpoints (for Next.js frontend)
+    path('api/auth/login/', views_api_auth.api_login, name='api_login'),
+    path('api/auth/logout/', views_api_auth.api_logout, name='api_logout'),
+    path('api/auth/signup/', views_api_auth.api_signup, name='api_signup'),
+    path('api/auth/me/', views_api_auth.api_current_user, name='api_current_user'),
 
-    # Authentication
+    # Traditional Authentication (for Django templates if needed)
     path('', views_auth.home_view, name='home'),
     path('signup/', views_auth.signup_view, name='signup'),
     path('login/', views_auth.login_view, name='login'),

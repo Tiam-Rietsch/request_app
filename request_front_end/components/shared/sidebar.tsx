@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LayoutDashboard, Plus, FileText, LogOut, X, Home } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth-context"
 
 interface SidebarProps {
   role?: "public" | "student" | "staff" | "cellule"
@@ -13,6 +14,11 @@ interface SidebarProps {
 
 export function Sidebar({ role = "public", isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const { logout } = useAuth()
+
+  const handleLogout = async () => {
+    await logout()
+  }
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/")
 
@@ -53,8 +59,8 @@ export function Sidebar({ role = "public", isOpen = true, onClose }: SidebarProp
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-16 h-[calc(100vh-64px)] w-64 border-r border-border bg-sidebar transition-transform lg:static lg:z-0 lg:translate-x-0",
-          isOpen ? "translate-x-0 z-40" : "-translate-x-full",
+          "fixed left-0 top-16 h-[calc(100vh-64px)] w-64 border-r border-border bg-sidebar transition-transform overflow-y-auto",
+          isOpen ? "translate-x-0 z-40" : "-translate-x-full lg:translate-x-0",
         )}
       >
         <div className="flex flex-col h-full p-4 gap-4">
@@ -88,9 +94,12 @@ export function Sidebar({ role = "public", isOpen = true, onClose }: SidebarProp
 
           {/* Logout */}
           <div className="mt-auto pt-4 border-t border-sidebar-border">
-            <button className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors w-full">
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors w-full"
+            >
               <LogOut className="h-5 w-5" />
-              <span>Logout</span>
+              <span>Déconnexion</span>
             </button>
           </div>
         </div>

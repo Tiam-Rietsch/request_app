@@ -8,50 +8,22 @@ import { LayoutWrapper } from "@/components/shared/layout-wrapper"
 import { Plus } from "lucide-react"
 import Link from "next/link"
 import type { ColumnDef } from "@tanstack/react-table"
+import { useAuth, useRequireAuth } from "@/lib/auth-context"
+import { requestsAPI } from "@/lib/api"
+import { useEffect, useState } from "react"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
 
 interface Request {
-  id: number
-  subject: string
+  id: string
+  subject: {
+    name: string
+  }
   type: string
   status: string
-  date: string
-  assignedTo: string
+  submitted_at: string
+  assigned_to_name: string | null
 }
-
-const requests: Request[] = [
-  {
-    id: 1,
-    subject: "Advanced Algorithms",
-    type: "EXAM",
-    status: "in_cellule",
-    date: "Nov 15, 2024",
-    assignedTo: "Prof. Smith",
-  },
-  {
-    id: 2,
-    subject: "Database Systems",
-    type: "CC",
-    status: "approved",
-    date: "Nov 10, 2024",
-    assignedTo: "Prof. Johnson",
-  },
-  {
-    id: 3,
-    subject: "Web Development",
-    type: "EXAM",
-    status: "done",
-    date: "Nov 5, 2024",
-    assignedTo: "Prof. Williams",
-  },
-  {
-    id: 4,
-    subject: "Data Structures",
-    type: "CC",
-    status: "sent",
-    date: "Nov 1, 2024",
-    assignedTo: "Prof. Brown",
-  },
-]
 
 const getStatusColor = (status: string) => {
   const colors: { [key: string]: string } = {
@@ -66,8 +38,44 @@ const getStatusColor = (status: string) => {
   return colors[status] || "status-sent"
 }
 
+const getStatusLabel = (status: string) => {
+  const labels: { [key: string]: string } = {
+    sent: "Envoyée",
+    received: "Reçue",
+    approved: "Approuvée",
+    rejected: "Rejetée",
+    in_cellule: "En cellule",
+    returned: "Retournée",
+    done: "Terminée",
+  }
+  return labels[status] || status
+}
+
 export default function StudentRequestsPage() {
+  useRequireAuth(['student'])
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const [requests, setRequests] = useState<Request[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchRequests()
+    }
+  }, [authLoading, user])
+
+  const fetchRequests = async () => {
+    try {
+      const response = await requestsAPI.list()
+      const results = response.results || response
+      setRequests(Array.isArray(results) ? results : [])
+    } catch (error) {
+      console.error("Failed to fetch requests:", error)
+      setRequests([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleRowClick = (request: Request) => {
     router.push(`/student/requests/${request.id}`)
@@ -76,67 +84,96 @@ export default function StudentRequestsPage() {
   const columns: ColumnDef<Request>[] = [
     {
       accessorKey: "subject",
-      header: "Subject",
-      cell: ({ row }) => row.getValue("subject"),
+      header: "Matière",
+      cell: ({ row }) => row.original.subject?.name || 'N/A',
     },
     {
       accessorKey: "type",
       header: "Type",
       cell: ({ row }) => (
         <span className="px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-xs font-medium rounded">
-          {row.getValue("type")}
+          {row.getValue("type")?.toString().toUpperCase()}
         </span>
       ),
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Statut",
       cell: ({ row }) => {
         const status = row.getValue("status") as string
         return (
           <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(status)}`}>
-            {status.replace("_", " ").toUpperCase()}
+            {getStatusLabel(status)}
           </span>
         )
       },
     },
     {
-      accessorKey: "date",
+      accessorKey: "submitted_at",
       header: "Date",
-      cell: ({ row }) => <span className="text-muted-foreground">{row.getValue("date")}</span>,
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {format(new Date(row.getValue("submitted_at")), 'dd MMM yyyy', { locale: fr })}
+        </span>
+      ),
     },
     {
-      accessorKey: "assignedTo",
-      header: "Assigned To",
+      accessorKey: "assigned_to_name",
+      header: "Assignée à",
+      cell: ({ row }) => row.getValue("assigned_to_name") || 'Non assignée',
     },
   ]
 
+  if (authLoading || loading) {
+    return (
+      <LayoutWrapper role="student" userName="..." userRole="student">
+        <div className="p-4 sm:p-6 max-w-7xl">
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Chargement...</p>
+          </div>
+        </div>
+      </LayoutWrapper>
+    )
+  }
+
   return (
-    <LayoutWrapper role="student" userName="John Doe" userRole="student">
+    <LayoutWrapper role="student" userName={user ? `${user.first_name} ${user.last_name}` : "Étudiant"} userRole="student">
       <div className="p-4 sm:p-6 max-w-7xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-2">My Requests</h1>
-            <p className="text-muted-foreground">View and manage all your grade contestations</p>
+            <h1 className="text-3xl font-bold mb-2">Mes Requêtes</h1>
+            <p className="text-muted-foreground">Voir et gérer toutes vos contestations de notes</p>
           </div>
           <Link href="/student/create-request">
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              New Request
+              Nouvelle Requête
             </Button>
           </Link>
         </div>
 
         {/* Table */}
         <Card className="p-6">
-          <DataTable
-            columns={columns}
-            data={requests}
-            enablePagination={true}
-            enableSorting={true}
-            onRowClick={handleRowClick}
-          />
+          {requests.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">Vous n'avez aucune requête pour le moment</p>
+              <Link href="/student/create-request">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer votre première requête
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={requests}
+              enablePagination={true}
+              enableSorting={true}
+              onRowClick={handleRowClick}
+            />
+          )}
         </Card>
       </div>
     </LayoutWrapper>

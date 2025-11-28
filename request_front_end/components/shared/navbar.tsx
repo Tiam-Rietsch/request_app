@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Menu, LogOut, Bell, User } from "lucide-react"
 import { useState } from "react"
+import { useAuth } from "@/lib/auth-context"
 
 interface NavbarProps {
   userName?: string
@@ -11,7 +12,12 @@ interface NavbarProps {
 }
 
 export function Navbar({ userName = "User", userRole = "student", onToggleSidebar }: NavbarProps) {
+  const { logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
+
+  const handleLogout = async () => {
+    await logout()
+  }
 
   const getRoleBadgeColor = () => {
     switch (userRole) {
@@ -81,7 +87,11 @@ export function Navbar({ userName = "User", userRole = "student", onToggleSideba
             </button>
           </div>
 
-          <button className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground">
+          <button 
+            onClick={handleLogout}
+            className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
+            title="Déconnexion"
+          >
             <LogOut className="h-5 w-5" />
           </button>
         </div>

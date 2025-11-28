@@ -22,11 +22,13 @@ export function LayoutWrapper({ children, role = "public", userName, userRole, h
       {!hideNav && (
         <Navbar userName={userName} userRole={userRole} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       )}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Static sidebar - does not scroll */}
+      <div className="flex flex-1">
+        {/* Fixed sidebar */}
         {role !== "public" && <Sidebar role={role} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
-        {/* Main content area - scrolls only */}
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        {/* Main content area - scrolls independently, with left padding for sidebar */}
+        <main className={role !== "public" ? "flex-1 overflow-y-auto lg:ml-64" : "flex-1 overflow-y-auto"}>
+          {children}
+        </main>
       </div>
     </div>
   )

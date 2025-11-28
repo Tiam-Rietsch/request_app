@@ -44,6 +44,9 @@ class ClassLevelViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsSuperAdmin()]
+        elif self.action in ['list', 'retrieve']:
+            # Allow unauthenticated access for signup
+            return [AllowAny()]
         return [IsAuthenticated()]
 
 
@@ -78,6 +81,9 @@ class FieldViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsSuperAdmin()]
+        elif self.action in ['list', 'retrieve']:
+            # Allow unauthenticated access for signup
+            return [AllowAny()]
         return [IsAuthenticated()]
 
 
@@ -571,8 +577,16 @@ class RequestViewSet(viewsets.ModelViewSet):
         """
         Retourne une page HTML stylée pour impression
         """
+        from .utils import generate_qr_code
+        
         req = self.get_object()
-        return render(request, 'requests_app/print_request.html', {'request': req})
+        qr_code = generate_qr_code(req, request)
+        
+        return render(request, 'requests_app/print_request.html', {
+            'request': req,
+            'today': timezone.now(),
+            'qr_code': qr_code
+        })
 
 
 @extend_schema_view(
